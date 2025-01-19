@@ -1,10 +1,10 @@
 box::use(
-  shiny[moduleServer, NS, textOutput, renderText],
-  bslib[page_fluid, layout_column_wrap, card, card_header],
-  highcharter[highchartOutput, renderHighchart, hchart, hcaes, hc_title,
-              hc_xAxis, hc_yAxis, hc_add_series],
-  reactable[reactableOutput, renderReactable],
+  bslib[card, card_header, layout_column_wrap, page_fluid],
   dplyr[`%>%`, filter],
+  highcharter[hc_add_series, hc_xAxis, hc_yAxis, hcaes,
+              hchart, highchartOutput, renderHighchart],
+  reactable[reactableOutput, renderReactable],
+  shiny[moduleServer, NS],
 )
 
 box::use(

@@ -1,10 +1,10 @@
 box::use(
   bslib[nav_panel, nav_spacer, page_navbar],
+  shiny.router[router_server],
   shiny[busyIndicatorOptions,
         moduleServer,
         NS,
         useBusyIndicators],
-  shiny.router[router_server],
 )
 
 box::use(
@@ -23,7 +23,7 @@ ui <- function(id) {
       useBusyIndicators(),
       busyIndicatorOptions(
         spinner_type = "dots2",
-        spinner_color = "#4a57a6",  # Using primary color
+        spinner_color = "#000",
         spinner_size = "2rem",
         spinner_delay = "300ms",
         fade_opacity = 0.5,

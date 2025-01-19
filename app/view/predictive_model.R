@@ -1,9 +1,8 @@
 box::use(
-  highcharter[highchartOutput, renderHighchart, hchart, hc_add_series, hc_chart,
-              hc_xAxis, hc_yAxis, hc_colors, hc_legend, hc_tooltip, hc_title, 
-              hc_size, JS],
-  shiny[div, h1, h2, moduleServer, NS],
-  bslib[layout_column_wrap, card, card_header],
+  bslib[card, card_header, layout_column_wrap],
+  highcharter[hc_chart, hc_colors, hc_legend, hc_size, hc_title, hc_tooltip,
+              hc_xAxis, hc_yAxis],
+  shiny[div, h1, moduleServer, NS],
 )
 
 box::use(
@@ -19,7 +18,7 @@ ui <- function(id) {
       width = 1,
       card(
         card_header("Variables Importance"),
-        highchartOutput(ns("vars_importance"), height = "500px")
+        highcharter::highchartOutput(ns("vars_importance"), height = "500px")
       )
     )
   )
@@ -29,20 +28,19 @@ ui <- function(id) {
 server <- function(id) {
   moduleServer(id, function(input, output, session) {
     data <- data_processing$initialize_data()
-    
-    output$vars_importance <- renderHighchart({
-      highcharter::highchart() |>
-        hc_add_series(data$vars$importance$percentage * 100, name = "") |>
+    output$vars_importance <- highchart::renderHighchart({
+      highchart::highchart() |>
+        highchart::hc_add_series(data$vars$importance$percentage * 100, name = "") |>
         hc_chart(type = "bar", zoomType = "xy") |>
         hc_xAxis(categories = data$vars$importance$variable) |>
         hc_yAxis(
-          title = list(text = "Importance Percentage"), 
+          title = list(text = "Importance Percentage"),
           labels = list(format = "{value}%")
         ) |>
         hc_colors("#4192b5") |>
         hc_legend(enabled = FALSE) |>
         hc_tooltip(
-          formatter = JS(
+          formatter = highchart::JS(
             "function(){return 'Importance (%): <b>' + Highcharts.numberFormat(this.y) + '%</b>';}"
           ),
           useHTML = FALSE

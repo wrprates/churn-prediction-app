@@ -1,7 +1,6 @@
 box::use(
-  dplyr[`%>%`, mutate, group_by, summarise, across, where, n, filter, ntile,
-        ungroup, tally, bind_cols, select, arrange, desc, everything],
-  h2o[h2o.init, as.h2o, h2o.splitFrame, h2o.predict, h2o.gbm, h2o.varimp],
+  dplyr[`%>%`, across, arrange, group_by, mutate, select, summarise, ungroup],
+  h2o[as.h2o, h2o.gbm, h2o.init, h2o.predict, h2o.splitFrame, h2o.varimp],
   readr[read_csv],
 )
 
@@ -13,7 +12,7 @@ initialize_data <- function() {
   data <- read_csv(
     "https://raw.githubusercontent.com/wrprates/open-data/master/telco_customer_churn.csv"
   ) %>%
-    mutate(across(where(is.character), as.factor))
+    mutate(across(dplyr::where(is.character), as.factor))
   # Create h2o frame and split data
   h2o_data <- as.h2o(data)
   splits <- h2o.splitFrame(h2o_data, ratios = 0.7)
@@ -30,8 +29,8 @@ initialize_data <- function() {
   overall_churn <- data %>%
     group_by(Churn) %>%
     summarise(
-      Customer = n(),
-      `% Customers` = round(100 * n() / nrow(data), 2)
+      Customer = dplyr::n(),
+      `% Customers` = round(100 * dplyr::n() / nrow(data), 2)
     ) %>%
     mutate(Customer = "Churn Yes / No")
 
@@ -44,29 +43,29 @@ initialize_data <- function() {
     )
   # Create predictions dataframe
   predictions_df <- as.data.frame(splits$test) %>%
-    bind_cols(
+    dplyr::bind_cols(
       as.data.frame(predictions) %>%
         select(Predict = predict, PredictProbability = Yes) %>%
         mutate(PredictProbability = round(100 * PredictProbability, 2))
     ) %>%
     mutate(
-      RiskGroup = as.numeric(11 - ntile(PredictProbability, 10))
+      RiskGroup = as.numeric(11 - dplyr::ntile(PredictProbability, 10))
     ) %>%
     select(
-      customerID, Churn, Predict, PredictProbability, RiskGroup, everything()
+      customerID, Churn, Predict, PredictProbability, RiskGroup, dplyr::everything()
     ) %>%
-    arrange(desc(PredictProbability))
+    arrange(dplyr::desc(PredictProbability))
   # Calculate churn by risk groups
   churn_by_risk_groups <- predictions_df %>%
     group_by(RiskGroup, Churn) %>%
-    tally() %>%
-    mutate(prop = 100 * n / sum(n)) %>%
+    dplyr::tally() %>%
+    mutate(prop = 100 * dplyr::n() / sum(dplyr::n())) %>%
     ungroup() %>%
     group_by(Churn) %>%
     mutate(
-      prop_bad_good = 100 * n / sum(n),
+      prop_bad_good = 100 * dplyr::n() / sum(dplyr::n()),
       cum_prop = cumsum(prop_bad_good),
-      n_cum_sum = cumsum(n)
+      n_cum_sum = cumsum(dplyr::n())
     ) %>%
     ungroup() %>%
     group_by(RiskGroup) %>%

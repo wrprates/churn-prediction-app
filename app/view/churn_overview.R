@@ -1,8 +1,8 @@
 box::use(
-  shiny[moduleServer, NS, div, textOutput, renderText, p, tags],
-  bslib[page_fluid, layout_column_wrap, card, card_header, value_box],
-  highcharter[highchartOutput, renderHighchart, hchart, hcaes, hc_title, hc_xAxis, hc_yAxis],
   bsicons[bs_icon],
+  bslib[card, card_header, layout_column_wrap, page_fluid, value_box],
+  highcharter[hc_title, hc_xAxis, hc_yAxis, hcaes, hchart, highchartOutput, renderHighchart],
+  shiny[div, moduleServer, NS, p, renderText, tags, textOutput],
 )
 
 box::use(
@@ -13,7 +13,7 @@ box::use(
 ui <- function(id) {
   ns <- NS(id)
   page_fluid(
-    # Métricas principais
+    # Main Metrics
     layout_column_wrap(
       width = 1 / 3,
       value_box(
@@ -38,8 +38,7 @@ ui <- function(id) {
         theme = "success"
       )
     ),
-    
-    # Distribuição geral do Churn
+    # Overall Churn Distribution
     card(
       card_header("Overall Churn Distribution"),
       div(
@@ -49,8 +48,7 @@ ui <- function(id) {
         highchartOutput(ns("overall_churn"))
       )
     ),
-    
-    # Fatores de risco e tendências mensais
+    # Risk Factors and Monthly Trends
     layout_column_wrap(
       width = 1 / 2,
       card(
@@ -68,13 +66,13 @@ ui <- function(id) {
         div(
           class = "p-3",
           p("This visualization shows the relationship between contract types and churn rates. 
-            It helps identify which contract arrangements are associated with higher customer retention."),
+            It helps identify which contract arrangements are associated with higher customer
+            retention."),
           highchartOutput(ns("monthly_trends"))
         )
       )
     ),
-    
-    # Seção de insights
+    # Insights Section
     card(
       card_header("Key Insights"),
       div(
@@ -114,7 +112,6 @@ server <- function(id) {
       )
     })
     output$overall_churn <- renderHighchart({
-      # Your existing chart code
       data$overall_churn |>
         hchart(
           hcaes(x = Customer, y = `% Customers`, group = Churn),
@@ -122,9 +119,9 @@ server <- function(id) {
           stacking = "normal",
           dataLabels = list(enabled = TRUE)
         ) |>
-        highcharter::hc_title(text = "Overall company's Churn") |>
-        highcharter::hc_xAxis(title = list(text = "")) |>
-        highcharter::hc_yAxis(max = 100)
+        hc_title(text = "Overall company's Churn") |>
+        hc_xAxis(title = list(text = "")) |>
+        hc_yAxis(max = 100)
     })
     output$risk_factors <- renderHighchart({
       # Variables importance chart
@@ -133,9 +130,9 @@ server <- function(id) {
           type = "bar",
           hcaes(x = variable, y = percentage * 100)
         ) |>
-        highcharter::hc_title(text = "Variables Importance") |>
-        highcharter::hc_xAxis(title = list(text = "")) |>
-        highcharter::hc_yAxis(title = list(text = "Importance (%)"))
+        hc_title(text = "Variables Importance") |>
+        hc_xAxis(title = list(text = "")) |>
+        hc_yAxis(title = list(text = "Importance (%)"))
     })
     output$monthly_trends <- renderHighchart({
       # Monthly trends chart
@@ -145,12 +142,12 @@ server <- function(id) {
           AvgCharges = mean(MonthlyCharges, na.rm = TRUE),
           ChurnRate = mean(Churn == "Yes") * 100
         ) |>
-        highcharter::hchart(
+        hchart(
           type = "column",
           hcaes(x = Contract, y = ChurnRate)
         ) |>
-        highcharter::hc_title(text = "Churn Rate by Contract Type") |>
-        highcharter::hc_yAxis(title = list(text = "Churn Rate (%)"))
+        hc_title(text = "Churn Rate by Contract Type") |>
+        hc_yAxis(title = list(text = "Churn Rate (%)"))
     })
   })
 }

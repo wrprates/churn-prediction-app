@@ -20,3 +20,24 @@ $breakpoint-sm: 576px;
 $breakpoint-md: 768px;
 $breakpoint-lg: 992px;
 $breakpoint-xl: 1200px;
+
+// Export all variables
+/* stylelint-disable */
+:export {
+  primaryColor: $primary-color;
+  secondaryColor: $secondary-color;
+  successColor: $success-color;
+  warningColor: $warning-color;
+  dangerColor: $danger-color;
+  backgroundColor: $background-color;
+  shadowSm: $shadow-sm;
+  shadowMd: $shadow-md;
+  fontFamilyBase: $font-family-base;
+  fontSizeBase: $font-size-base;
+  lineHeightBase: $line-height-base;
+  breakpointSm: $breakpoint-sm;
+  breakpointMd: $breakpoint-md;
+  breakpointLg: $breakpoint-lg;
+  breakpointXl: $breakpoint-xl;
+}
+/* stylelint-enable */

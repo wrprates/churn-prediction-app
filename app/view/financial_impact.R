@@ -1,10 +1,10 @@
 box::use(
-  shiny[moduleServer, NS, textOutput, renderText],
-  bslib[page_fluid, layout_column_wrap, card, card_header, value_box],
-  highcharter[highchartOutput, renderHighchart, hcaes, hchart, hc_title,
-              hc_xAxis, hc_yAxis, hc_plotOptions, hc_add_series, JS],
-  dplyr[`%>%`, group_by, summarise, filter, pull],
   bsicons[bs_icon],
+  bslib[card, card_header, layout_column_wrap, page_fluid, value_box],
+  dplyr[`%>%`, filter, group_by, pull, summarise],
+  highcharter[hc_title, hc_xAxis, hc_yAxis,
+              hcaes, hchart, highchartOutput, JS, renderHighchart],
+  shiny[moduleServer, NS, renderText, textOutput],
 )
 
 box::use(
@@ -80,11 +80,11 @@ server <- function(id) {
     # Financial impact chart
     output$charge_risk_groups <- renderHighchart({
       data$charge_for_risk_groups %>%
-        highcharter::hchart(
+        hchart(
           hcaes(x = RiskGroup, y = SumMonthlyCharges, group = Churn),
           type = "column"
         ) %>%
-        hc_plotOptions(column = list(
+        renderHighchart::hc_plotOptions(column = list(
           stacking = "normal",
           dataLabels = list(
             enabled = TRUE,
@@ -117,7 +117,7 @@ server <- function(id) {
           type = "pie",
           hcaes(x = Contract, y = TotalRevenue)
         ) %>%
-        highcharter::hc_title(
+        hc_title(
           text = "Revenue by Contract Type"
         )
     })
@@ -128,14 +128,14 @@ server <- function(id) {
         summarise(
           AvgCharges = mean(MonthlyCharges, na.rm = TRUE)
         ) %>%
-        highcharter::hchart(
+        hchart(
           type = "column",
           hcaes(x = Contract, y = AvgCharges)
         ) %>%
-        highcharter::hc_title(
+        hc_title(
           text = "Average Monthly Charges by Contract"
         ) %>%
-        highcharter::hc_yAxis(
+        hc_yAxis(
           title = list(text = "Average Monthly Charges ($)")
         )
     })
