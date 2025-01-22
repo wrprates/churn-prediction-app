@@ -29,8 +29,8 @@ server <- function(id) {
   moduleServer(id, function(input, output, session) {
     data <- data_processing$initialize_data()
     output$vars_importance <- highcharter::renderHighchart({
-      highchart::highchart() |>
-        highchart::hc_add_series(data$vars$importance$percentage * 100, name = "") |>
+      highcharter::highchart() |>
+        highcharter::hc_add_series(data$vars$importance$percentage * 100, name = "") |>
         hc_chart(type = "bar", zoomType = "xy") |>
         hc_xAxis(categories = data$vars$importance$variable) |>
         hc_yAxis(
@@ -40,7 +40,7 @@ server <- function(id) {
         hc_colors("#4192b5") |>
         hc_legend(enabled = FALSE) |>
         hc_tooltip(
-          formatter = highchart::JS(
+          formatter = highcharter::JS(
             "function(){return 'Importance (%): <b>' + Highcharts.numberFormat(this.y) + '%</b>';}"
           ),
           useHTML = FALSE

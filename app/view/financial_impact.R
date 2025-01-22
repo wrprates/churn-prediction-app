@@ -84,7 +84,7 @@ server <- function(id) {
           hcaes(x = RiskGroup, y = SumMonthlyCharges, group = Churn),
           type = "column"
         ) %>%
-        renderHighchart::hc_plotOptions(column = list(
+        highcharter::hc_plotOptions(column = list(
           stacking = "normal",
           dataLabels = list(
             enabled = TRUE,
