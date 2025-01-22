@@ -6,6 +6,13 @@ box::use(
 
 #' @export
 initialize_data <- function() {
+  # Check if cached data exists
+  cache_path <- "data/model_output.rds"
+  
+  if (file.exists(cache_path)) {
+    return(readRDS(cache_path))
+  }
+  
   # Initialize h2o
   h2o.init()
   # Read and process data
@@ -78,8 +85,9 @@ initialize_data <- function() {
         2
       )
     )
-  # Return list of data objects
-  list(
+    
+  # Create output list
+  output_list <- list(
     raw_data = data,
     predictions = predictions_df,
     overall_churn = overall_churn,
@@ -94,6 +102,17 @@ initialize_data <- function() {
       importance = vars_importance
     )
   )
+  
+  # Create data directory if it doesn't exist
+  if (!dir.exists("data")) {
+    dir.create("data")
+  }
+  
+  # Save output to RDS
+  saveRDS(output_list, cache_path)
+  
+  # Return the output
+  output_list
 }
 
 #' @export
