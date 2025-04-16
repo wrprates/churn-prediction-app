@@ -22,6 +22,10 @@ jobs:
         run: |
           packages=(
             # List each package on a separate line.
+            libcurl4-openssl-dev
+            gdal-bin
+            libgdal-dev
+            libudunits2-dev
           )
           sudo apt-get update
           sudo apt-get install --yes "${packages[@]}"
