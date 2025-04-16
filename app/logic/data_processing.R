@@ -12,7 +12,7 @@ initialize_data <- function() {
   if (file.exists(cache_path)) {
     return(readRDS(cache_path))
   }
-  
+
   # Initialize h2o
   h2o.init()
   # Read and process data
@@ -66,13 +66,13 @@ initialize_data <- function() {
   churn_by_risk_groups <- predictions_df %>%
     group_by(RiskGroup, Churn) %>%
     dplyr::tally() %>%
-    mutate(prop = 100 * dplyr::n() / sum(dplyr::n())) %>%
+    mutate(prop = 100 * n / sum(n)) %>%
     ungroup() %>%
     group_by(Churn) %>%
     mutate(
-      prop_bad_good = 100 * dplyr::n() / sum(dplyr::n()),
+      prop_bad_good = 100 * n / sum(n),
       cum_prop = cumsum(prop_bad_good),
-      n_cum_sum = cumsum(dplyr::n())
+      n_cum_sum = cumsum(n)
     ) %>%
     ungroup() %>%
     group_by(RiskGroup) %>%
