@@ -59,7 +59,7 @@ server <- function(id) {
     })
     output$risk_table <- renderReactable({
       data$predictions |>
-        filter(RiskGroup <= 3) |>  # Show top 3 risk groups
+        filter(RiskGroup %in% c("1", "2", "3")) |>  # Show top 3 risk groups
         reactable::reactable(
           columns = list(
             Contract = reactable::colDef(minWidth = 150),

@@ -2,7 +2,7 @@ box::use(
   bsicons[bs_icon],
   bslib[card, card_header, layout_column_wrap, page_fluid, value_box],
   dplyr[`%>%`, filter, group_by, pull, summarise],
-  highcharter[hc_title, hc_xAxis, hc_yAxis,
+  highcharter[hc_title, hc_xAxis, hc_yAxis, hc_tooltip,
               hcaes, hchart, highchartOutput, JS, renderHighchart],
   shiny[moduleServer, NS, renderText, textOutput],
 )
@@ -68,7 +68,7 @@ server <- function(id) {
     })
     output$risk_revenue <- renderText({
       high_risk <- data$predictions %>%
-        filter(RiskGroup <= 3) %>%
+        filter(RiskGroup %in% c("1", "2", "3")) %>%
         summarise(total = sum(MonthlyCharges, na.rm = TRUE)) %>%
         pull(total)
       paste0("$", format(high_risk, big.mark = ",", scientific = FALSE))
@@ -104,6 +104,9 @@ server <- function(id) {
         ) %>%
         hc_title(
           text = "Monthly Charges by Risk Group"
+        ) %>%
+        hc_tooltip(
+          formatter = JS("function() { return this.series.name + ' (Risk Group ' + this.point.x + '): <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }")
         )
     })
     # Revenue distribution chart
@@ -119,6 +122,9 @@ server <- function(id) {
         ) %>%
         hc_title(
           text = "Revenue by Contract Type"
+        ) %>%
+        hc_tooltip(
+          formatter = JS("function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }")
         )
     })
     # Monthly trend chart
@@ -137,6 +143,9 @@ server <- function(id) {
         ) %>%
         hc_yAxis(
           title = list(text = "Average Monthly Charges ($)")
+        ) %>%
+        hc_tooltip(
+          formatter = JS("function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }")
         )
     })
   })
