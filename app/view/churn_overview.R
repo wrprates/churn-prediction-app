@@ -123,7 +123,8 @@ server <- function(id) {
         hc_xAxis(title = list(text = "")) |>
         hc_yAxis(max = 100) |>
         hc_tooltip(
-          formatter = JS("function() { return this.series.name + ': <b>' + Highcharts.numberFormat(this.y, 2) + '%</b>'; }")
+          formatter = JS("function() { return 
+                         this.series.name + ': <b>' + Highcharts.numberFormat(this.y, 2) + '%</b>'; }")
         )
     })
     output$risk_factors <- renderHighchart({

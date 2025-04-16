@@ -106,7 +106,9 @@ server <- function(id) {
           text = "Monthly Charges by Risk Group"
         ) %>%
         hc_tooltip(
-          formatter = JS("function() { return this.series.name + ' (Risk Group ' + this.point.x + '): <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }")
+          formatter = JS("function() { return 
+                         this.series.name + ' (Risk Group ' + this.point.x + '): <b>$' + 
+                         Highcharts.numberFormat(this.y, 2) + '</b>'; }")
         )
     })
     # Revenue distribution chart
@@ -124,7 +126,8 @@ server <- function(id) {
           text = "Revenue by Contract Type"
         ) %>%
         hc_tooltip(
-          formatter = JS("function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }")
+          formatter = JS("function() { return 
+                         this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }")
         )
     })
     # Monthly trend chart
@@ -145,7 +148,8 @@ server <- function(id) {
           title = list(text = "Average Monthly Charges ($)")
         ) %>%
         hc_tooltip(
-          formatter = JS("function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }")
+          formatter = JS("function() { return 
+                         this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }")
         )
     })
   })
