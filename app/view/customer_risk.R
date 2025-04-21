@@ -17,7 +17,6 @@ box::use(
 ui <- function(id) {
   ns <- NS(id)
   page_fluid(
-    custom_css,
     layout_column_wrap(
       width = 1,
       card(
@@ -129,23 +128,23 @@ server <- function(id) {
     filtered_data <- reactive({
       # Use req to ensure data is available
       req(data, data$predictions)
-      
+
       result <- data$predictions %>%
         filter(RiskGroup %in% c("1", "2", "3"))
-      
+
       # Apply filters only if selections are made, using %in% for multiple selections
       if (!is.null(input$filter_contract) && length(input$filter_contract) > 0) {
         result <- result %>% filter(Contract %in% input$filter_contract)
       }
-      
+
       if (!is.null(input$filter_payment) && length(input$filter_payment) > 0) {
         result <- result %>% filter(PaymentMethod %in% input$filter_payment)
       }
-      
+
       if (!is.null(input$filter_tech) && length(input$filter_tech) > 0) {
         result <- result %>% filter(TechSupport %in% input$filter_tech)
       }
-      
+
       return(result)
     })
 
