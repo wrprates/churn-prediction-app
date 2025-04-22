@@ -1,6 +1,6 @@
 box::use(
   bslib[card, card_header, layout_column_wrap, page_fluid],
-  dplyr[`%>%`, filter, distinct, pull],
+  dplyr[filter, distinct, pull],
   highcharter[hc_add_series, hc_xAxis, hc_yAxis, hcaes,
               hchart, highchartOutput, renderHighchart],
   htmltools[HTML],
@@ -84,19 +84,19 @@ server <- function(id) {
       req(data, data$predictions, nrow(data$predictions) > 0)
 
       # Get unique values for each filter
-      contract_choices <- data$predictions %>%
-        filter(RiskGroup %in% c("1", "2", "3")) %>%
-        distinct(Contract) %>%
+      contract_choices <- data$predictions |>
+        filter(RiskGroup %in% c("1", "2", "3")) |>
+        distinct(Contract) |>
         pull(Contract)
 
-      payment_choices <- data$predictions %>%
-        filter(RiskGroup %in% c("1", "2", "3")) %>%
-        distinct(PaymentMethod) %>%
+      payment_choices <- data$predictions |>
+        filter(RiskGroup %in% c("1", "2", "3")) |>
+        distinct(PaymentMethod) |>
         pull(PaymentMethod)
 
-      tech_choices <- data$predictions %>%
-        filter(RiskGroup %in% c("1", "2", "3")) %>%
-        distinct(TechSupport) %>%
+      tech_choices <- data$predictions |>
+        filter(RiskGroup %in% c("1", "2", "3")) |>
+        distinct(TechSupport) |>
         pull(TechSupport)
 
       # Update virtual select inputs without conditional checks
@@ -129,20 +129,20 @@ server <- function(id) {
       # Use req to ensure data is available
       req(data, data$predictions)
 
-      result <- data$predictions %>%
+      result <- data$predictions |>
         filter(RiskGroup %in% c("1", "2", "3"))
 
       # Apply filters only if selections are made, using %in% for multiple selections
       if (!is.null(input$filter_contract) && length(input$filter_contract) > 0) {
-        result <- result %>% filter(Contract %in% input$filter_contract)
+        result <- result |> filter(Contract %in% input$filter_contract)
       }
 
       if (!is.null(input$filter_payment) && length(input$filter_payment) > 0) {
-        result <- result %>% filter(PaymentMethod %in% input$filter_payment)
+        result <- result |> filter(PaymentMethod %in% input$filter_payment)
       }
 
       if (!is.null(input$filter_tech) && length(input$filter_tech) > 0) {
-        result <- result %>% filter(TechSupport %in% input$filter_tech)
+        result <- result |> filter(TechSupport %in% input$filter_tech)
       }
 
       return(result)
@@ -159,7 +159,7 @@ server <- function(id) {
         ) |>
         hc_add_series(
           name = "Cumulative % of canceled customers (recall)",
-          data = (data$churn_by_risk_groups %>%
+          data = (data$churn_by_risk_groups |>
                     filter(Churn == "Yes"))$cum_prop,
           type = "line",
           dashStyle = "DashDot"

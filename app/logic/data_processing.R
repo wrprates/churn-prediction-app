@@ -1,5 +1,5 @@
 box::use(
-  dplyr[`%>%`, across, arrange, bind_cols, desc, everything, group_by, mutate, n, ntile,
+  dplyr[across, arrange, bind_cols, desc, everything, group_by, mutate, n, ntile,
         rename, select, summarise, tally, ungroup, where],
   h2o[as.h2o, h2o.gbm, h2o.init, h2o.performance, h2o.predict, h2o.splitFrame, h2o.varimp],
   readr[read_csv],
@@ -28,7 +28,7 @@ initialize_data <- function() {
   ml$data <- list()
   ml$data$raw <- read_csv(
     "https://raw.githubusercontent.com/wrprates/open-data/master/telco_customer_churn.csv"
-  ) %>%
+  ) |>
     mutate(across(where(is.character), as.factor))
 
   # Defining variables
@@ -48,48 +48,48 @@ initialize_data <- function() {
   h2o.performance(ml$model, ml$data$splits$test)
 
   # Create predictions dataframe
-  ml$data$predictions <- ml$data$splits$test %>%
-    as_tibble() %>%
+  ml$data$predictions <- ml$data$splits$test |>
+    as_tibble() |>
     bind_cols(
-      as_tibble(ml$predictions) %>%
-        select(Predict = predict, PredictProbability = Yes) %>%
+      as_tibble(ml$predictions) |>
+        select(Predict = predict, PredictProbability = Yes) |>
         mutate(PredictProbability = round(100 * PredictProbability, 2))
-    ) %>%
+    ) |>
     # 11 is not a magic number, it is inverting the order of the deciles
-    mutate(RiskGroup = as.factor(11 - ntile(PredictProbability, 10))) %>%
-    select(customerID, Churn, Predict, PredictProbability, RiskGroup, everything()) %>%
+    mutate(RiskGroup = as.factor(11 - ntile(PredictProbability, 10))) |>
+    select(customerID, Churn, Predict, PredictProbability, RiskGroup, everything()) |>
     arrange(desc(PredictProbability))
 
   # Calculate overall churn
-  ml$data$overall_churn <- ml$data$raw %>%
-    group_by(Churn) %>%
-    tally() %>%
+  ml$data$overall_churn <- ml$data$raw |>
+    group_by(Churn) |>
+    tally() |>
     mutate(
       `% Customers` = round(100 * n / sum(n), 2),
       Customer = "Churn Yes / No"
-    ) %>%
+    ) |>
     rename(`Count Customers` = n)
 
   # Get variable importance - removed multiplication by 100
-  ml$vars$importance <- h2o.varimp(ml$model) %>%
+  ml$vars$importance <- h2o.varimp(ml$model) |>
     as_tibble()
 
   # Calculate churn by risk groups
-  ml$data$churn_by_risk_groups <- ml$data$predictions %>%
-    group_by(RiskGroup, Churn) %>%
-    tally() %>%
-    mutate(prop = 100 * n / sum(n)) %>%
-    ungroup() %>%
-    group_by(Churn) %>%
+  ml$data$churn_by_risk_groups <- ml$data$predictions |>
+    group_by(RiskGroup, Churn) |>
+    tally() |>
+    mutate(prop = 100 * n / sum(n)) |>
+    ungroup() |>
+    group_by(Churn) |>
     mutate(
       prop_bad_good = 100 * n / sum(n),
       cum_prop = cumsum(prop_bad_good),
       n_cum_sum = cumsum(n)
-    ) %>%
-    ungroup() %>%
-    group_by(RiskGroup) %>%
-    mutate(precisao = 100 * n_cum_sum / sum(n_cum_sum)) %>%
-    ungroup() %>%
+    ) |>
+    ungroup() |>
+    group_by(RiskGroup) |>
+    mutate(precisao = 100 * n_cum_sum / sum(n_cum_sum)) |>
+    ungroup() |>
     mutate(
       across(
         .cols = c("prop", "prop_bad_good", "cum_prop", "precisao"),
@@ -99,8 +99,8 @@ initialize_data <- function() {
     )
 
   # Calculate financial values for each risk group
-  ml$data$charge_for_risk_groups <- ml$data$predictions %>%
-    group_by(Churn, RiskGroup) %>%
+  ml$data$charge_for_risk_groups <- ml$data$predictions |>
+    group_by(Churn, RiskGroup) |>
     summarise(
       SumMonthlyCharges = sum(MonthlyCharges, na.rm = TRUE),
       .groups = "drop"

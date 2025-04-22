@@ -1,7 +1,7 @@
 box::use(
   bsicons[bs_icon],
   bslib[card, card_header, layout_column_wrap, page_fluid, value_box],
-  dplyr[`%>%`, filter, group_by, pull, summarise],
+  dplyr[filter, group_by, pull, summarise],
   highcharter[hc_title, hc_xAxis, hc_yAxis, hc_tooltip,
               hcaes, hchart, highchartOutput, JS, renderHighchart],
   shiny[moduleServer, NS, renderText, textOutput],
