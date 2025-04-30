@@ -1,8 +1,8 @@
 box::use(
   bsicons[bs_icon],
   bslib[card, card_header, layout_column_wrap, page_fluid, value_box],
-  dplyr[`%>%`, filter, group_by, pull, summarise],
-  highcharter[hc_title, hc_xAxis, hc_yAxis,
+  dplyr[filter, group_by, pull, summarise],
+  highcharter[hc_title, hc_xAxis, hc_yAxis, hc_tooltip,
               hcaes, hchart, highchartOutput, JS, renderHighchart],
   shiny[moduleServer, NS, renderText, textOutput],
 )
@@ -67,9 +67,9 @@ server <- function(id) {
       paste0("$", format(total, big.mark = ",", scientific = FALSE))
     })
     output$risk_revenue <- renderText({
-      high_risk <- data$predictions %>%
-        filter(RiskGroup <= 3) %>%
-        summarise(total = sum(MonthlyCharges, na.rm = TRUE)) %>%
+      high_risk <- data$predictions |>
+        filter(RiskGroup %in% c("1", "2", "3")) |>
+        summarise(total = sum(MonthlyCharges, na.rm = TRUE)) |>
         pull(total)
       paste0("$", format(high_risk, big.mark = ",", scientific = FALSE))
     })
@@ -79,11 +79,11 @@ server <- function(id) {
     })
     # Financial impact chart
     output$charge_risk_groups <- renderHighchart({
-      data$charge_for_risk_groups %>%
+      data$charge_for_risk_groups |>
         hchart(
           hcaes(x = RiskGroup, y = SumMonthlyCharges, group = Churn),
           type = "column"
-        ) %>%
+        ) |>
         highcharter::hc_plotOptions(column = list(
           stacking = "normal",
           dataLabels = list(
@@ -95,48 +95,60 @@ server <- function(id) {
               }
             ")
           )
-        )) %>%
+        )) |>
         hc_yAxis(
           title = list(text = "Monthly Charges ($)")
-        ) %>%
+        ) |>
         hc_xAxis(
           title = list(text = "Risk Group")
-        ) %>%
+        ) |>
         hc_title(
           text = "Monthly Charges by Risk Group"
+        ) |>
+        hc_tooltip(
+          formatter = JS("function() { return this.series.name + ' (Risk Group ' + this.point.x + '): <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }"), #nolint
+          useHTML = TRUE
         )
     })
     # Revenue distribution chart
     output$revenue_distribution <- renderHighchart({
-      data$raw_data %>%
-        group_by(Contract) %>%
+      data$raw_data |>
+        group_by(Contract) |>
         summarise(
           TotalRevenue = sum(MonthlyCharges, na.rm = TRUE)
-        ) %>%
+        ) |>
         hchart(
           type = "pie",
           hcaes(x = Contract, y = TotalRevenue)
-        ) %>%
+        ) |>
         hc_title(
           text = "Revenue by Contract Type"
+        ) |>
+        hc_tooltip(
+          formatter = JS("function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }"), #nolint
+          useHTML = TRUE
         )
     })
     # Monthly trend chart
     output$monthly_trend <- renderHighchart({
-      data$raw_data %>%
-        group_by(Contract) %>%
+      data$raw_data |>
+        group_by(Contract) |>
         summarise(
           AvgCharges = mean(MonthlyCharges, na.rm = TRUE)
-        ) %>%
+        ) |>
         hchart(
           type = "column",
           hcaes(x = Contract, y = AvgCharges)
-        ) %>%
+        ) |>
         hc_title(
           text = "Average Monthly Charges by Contract"
-        ) %>%
+        ) |>
         hc_yAxis(
           title = list(text = "Average Monthly Charges ($)")
+        ) |>
+        hc_tooltip(
+          formatter = JS("function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }"), #nolint
+          useHTML = TRUE
         )
     })
   })

@@ -35,13 +35,14 @@ server <- function(id) {
         hc_xAxis(categories = data$vars$importance$variable) |>
         hc_yAxis(
           title = list(text = "Importance Percentage"),
-          labels = list(format = "{value}%")
+          labels = list(format = "{value}%"),
+          max = 50
         ) |>
         hc_colors("#4192b5") |>
         hc_legend(enabled = FALSE) |>
         hc_tooltip(
           formatter = highcharter::JS(
-            "function(){return 'Importance (%): <b>' + Highcharts.numberFormat(this.y) + '%</b>';}"
+            "function(){return 'Importance (%): <b>' + Highcharts.numberFormat(this.y, 2) + '%</b>';}"
           ),
           useHTML = FALSE
         ) |>

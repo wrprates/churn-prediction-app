@@ -1,7 +1,7 @@
 box::use(
   bsicons[bs_icon],
   bslib[card, card_header, layout_column_wrap, page_fluid, value_box],
-  highcharter[hc_title, hc_xAxis, hc_yAxis, hcaes, hchart, highchartOutput, renderHighchart],
+  highcharter[hc_title, hc_xAxis, hc_yAxis, hcaes, hchart, highchartOutput, renderHighchart, hc_tooltip, JS],
   shiny[div, moduleServer, NS, p, renderText, tags, textOutput],
 )
 
@@ -121,18 +121,32 @@ server <- function(id) {
         ) |>
         hc_title(text = "Overall company's Churn") |>
         hc_xAxis(title = list(text = "")) |>
-        hc_yAxis(max = 100)
+        hc_yAxis(max = 100) |>
+        hc_tooltip(
+          formatter = JS("function() { return 
+                         this.series.name + ': <b>' + Highcharts.numberFormat(this.y, 2) + '%</b>'; }")
+        )
     })
     output$risk_factors <- renderHighchart({
       # Variables importance chart
-      data$vars$importance |>
-        highcharter::hchart(
-          type = "bar",
-          hcaes(x = variable, y = percentage * 100)
+      highcharter::highchart() |>
+        highcharter::hc_add_series(data$vars$importance$percentage * 100, name = "") |>
+        highcharter::hc_chart(type = "bar", zoomType = "xy") |>
+        highcharter::hc_xAxis(categories = data$vars$importance$variable) |>
+        highcharter::hc_yAxis(
+          title = list(text = "Importance Percentage"),
+          labels = list(format = "{value}%"),
+          max = 50  # Set a reasonable maximum value
         ) |>
-        hc_title(text = "Variables Importance") |>
-        hc_xAxis(title = list(text = "")) |>
-        hc_yAxis(title = list(text = "Importance (%)"))
+        highcharter::hc_colors("#4192b5") |>
+        highcharter::hc_legend(enabled = FALSE) |>
+        highcharter::hc_tooltip(
+          formatter = JS(
+            "function(){return 'Importance (%): <b>' + Highcharts.numberFormat(this.y, 2) + '%</b>';}"
+          ),
+          useHTML = FALSE
+        ) |>
+        highcharter::hc_title(text = "Variables Importance")
     })
     output$monthly_trends <- renderHighchart({
       # Monthly trends chart
@@ -147,7 +161,10 @@ server <- function(id) {
           hcaes(x = Contract, y = ChurnRate)
         ) |>
         hc_title(text = "Churn Rate by Contract Type") |>
-        hc_yAxis(title = list(text = "Churn Rate (%)"))
+        hc_yAxis(title = list(text = "Churn Rate (%)")) |>
+        hc_tooltip(
+          formatter = JS("function() { return 'Churn Rate: <b>' + Highcharts.numberFormat(this.y, 2) + '%</b>'; }")
+        )
     })
   })
 }
