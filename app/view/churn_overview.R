@@ -6,7 +6,7 @@ box::use(
 )
 
 box::use(
-  app/logic/data_processing,
+  app/logic/load_data,
 )
 
 #' @export
@@ -91,7 +91,7 @@ ui <- function(id) {
 #' @export
 server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    data <- data_processing$initialize_data()
+    data <- load_data$load_data()
     output$total_customers <- renderText({
       nrow(data$raw_data)
     })

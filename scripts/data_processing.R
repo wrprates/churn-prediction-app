@@ -1,20 +1,11 @@
-box::use(
-  dplyr[across, arrange, bind_cols, desc, everything, group_by, mutate, n, ntile,
-        rename, select, summarise, tally, ungroup, where],
-  h2o[as.h2o, h2o.gbm, h2o.init, h2o.performance, h2o.predict, h2o.splitFrame, h2o.varimp],
-  readr[read_csv],
-  tibble[as_tibble],
-)
+# Package imports using library()
+library("dplyr")
+library("h2o")
+library("readr")
+library("tibble")
 
-#' @export
+# Main function to initialize data and create the model
 initialize_data <- function() {
-  # Check if cached data exists
-  cache_path <- "data/model_output.rds"
-
-  if (file.exists(cache_path)) {
-    return(readRDS(cache_path))
-  }
-
   # Create main container
   ml <- list()
 
@@ -93,8 +84,7 @@ initialize_data <- function() {
     mutate(
       across(
         .cols = c("prop", "prop_bad_good", "cum_prop", "precisao"),
-        .fns = round,
-        2
+        \(x) round(x, 2)
       )
     )
 
@@ -125,13 +115,14 @@ initialize_data <- function() {
   }
 
   # Save output to RDS
+  cache_path <- "data/model_output.rds"
   saveRDS(output_list, cache_path)
 
   # Return the output
   output_list
 }
 
-#' @export
+# Function to train the model
 train_model <- function(data) {
   # Train GBM model
   model <- h2o::h2o.gbm(
@@ -141,3 +132,8 @@ train_model <- function(data) {
   )
   model
 }
+
+# Run the data processing when script is sourced or run directly
+message("Starting data processing...")
+result <- initialize_data()
+message("Processing complete and data saved to 'data/model_output.rds'")
