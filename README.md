@@ -50,7 +50,7 @@ You can modify these settings to control the application's behavior.
 Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/churn-prediction-app.git
+git clone https://github.com/wrprates/churn-prediction-app.git
 cd churn-prediction-app
 ```
 
