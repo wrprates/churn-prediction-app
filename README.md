@@ -57,7 +57,7 @@ cd churn-prediction-app
 Install dependencies:
 
 ```r
-source("dependencies.R")
+renv::restore()
 ```
 
 ## Execution
@@ -65,7 +65,7 @@ source("dependencies.R")
 To start the application:
 
 ```r
-shiny::runApp()
+rhino::app()
 ```
 
 ## API
@@ -81,13 +81,6 @@ This application can use the churn prediction API available at `http://164.90.24
 
 The application primarily uses the `/model/predictions?limit=all` endpoint to obtain complete data and calculate additional statistics locally.
 
-## Implementation
-
-The API integration was implemented with the following features:
-
-1. **Call Efficiency**: Minimizes the number of API calls by primarily using the `/model/predictions` endpoint
-2. **Resilience**: Local data processing to build visualizations when the API doesn't provide specific data
-3. **Automatic Fallback**: Falls back to the local file when the API is unavailable
 
 ## Project Structure
 
@@ -106,4 +99,4 @@ The API integration was implemented with the following features:
 
 ## License
 
-MIT 
+MIT
