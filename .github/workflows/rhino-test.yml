@@ -26,6 +26,7 @@ jobs:
             gdal-bin
             libgdal-dev
             libudunits2-dev
+            libsodium-dev
           )
           sudo apt-get update
           sudo apt-get install --yes "${packages[@]}"
