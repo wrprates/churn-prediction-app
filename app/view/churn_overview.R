@@ -3,6 +3,7 @@ box::use(
   bslib[card, card_header, layout_column_wrap, page_fluid, value_box],
   highcharter[hc_title, hc_xAxis, hc_yAxis, hcaes, hchart, highchartOutput, renderHighchart, hc_tooltip, JS],
   shiny[div, moduleServer, NS, p, renderText, tags, textOutput],
+  utils[head]
 )
 
 box::use(
@@ -91,27 +92,77 @@ ui <- function(id) {
 #' @export
 server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    data <- load_data$load_data()
-    output$total_customers <- renderText({
-      nrow(data$raw_data)
+    # Load data with error handling
+    data <- tryCatch({
+      loaded_data <- load_data$load_data()
+      message("Successfully loaded data for overview")
+      loaded_data
+    }, error = function(e) {
+      message("Error loading data: ", e$message)
+      # Return a minimal data structure with empty defaults
+      list(
+        raw_data = data.frame(),
+        predictions = data.frame(),
+        overall_churn = data.frame(),
+        vars = list(importance = data.frame(variable = character(0), percentage = numeric(0))),
+        colors = c("#e8e9ed", "#e89978", "#4a57a6", "#4192b5")
+      )
     })
+
+    # Debug information about loaded data
+    message("Overview data loaded:")
+    message("- raw_data dimensions: ", nrow(data$raw_data), " x ",
+            if (ncol(data$raw_data) > 0) ncol(data$raw_data) else 0)
+
+    if (nrow(data$raw_data) > 0) {
+      message("- First few customerIDs: ",
+              paste(head(data$raw_data$customerID, min(3, nrow(data$raw_data))), collapse = ", "))
+    }
+
+    output$total_customers <- renderText({
+      customer_count <- if (is.data.frame(data$raw_data)) nrow(data$raw_data) else 0
+      message("Rendering total_customers: ", customer_count)
+      # Format the number with commas for thousands
+      format(customer_count, big.mark = ",")
+    })
+
     output$churn_rate <- renderText({
+      if (!is.data.frame(data$raw_data) || nrow(data$raw_data) == 0 || !"Churn" %in% names(data$raw_data)) {
+        return("0.0%")
+      }
+
       paste0(
-        round(mean(data$raw_data$Churn == "Yes") * 100, 1),
+        round(mean(data$raw_data$Churn == "Yes", na.rm = TRUE) * 100, 1),
         "%"
       )
     })
+
     output$monthly_revenue <- renderText({
+      if (!is.data.frame(data$raw_data) || nrow(data$raw_data) == 0 || !"MonthlyCharges" %in% names(data$raw_data)) {
+        return("$0.00")
+      }
+
       paste0(
         "$",
         format(
-          sum(data$raw_data$MonthlyCharges),
+          sum(data$raw_data$MonthlyCharges, na.rm = TRUE),
           big.mark = ",",
           scientific = FALSE
         )
       )
     })
+
     output$overall_churn <- renderHighchart({
+      # Handle missing data
+      if (!is.data.frame(data$overall_churn) || nrow(data$overall_churn) == 0) {
+        # Return an empty chart with a message
+        return(
+          highcharter::highchart() |>
+            highcharter::hc_title(text = "No churn data available") |>
+            highcharter::hc_subtitle(text = "Please check your data source")
+        )
+      }
+
       data$overall_churn |>
         hchart(
           hcaes(x = Customer, y = `% Customers`, group = Churn),
@@ -127,7 +178,17 @@ server <- function(id) {
                          this.series.name + ': <b>' + Highcharts.numberFormat(this.y, 2) + '%</b>'; }")
         )
     })
+
     output$risk_factors <- renderHighchart({
+      # Handle missing data
+      if (!is.list(data$vars) || !is.data.frame(data$vars$importance) || nrow(data$vars$importance) == 0) {
+        return(
+          highcharter::highchart() |>
+            highcharter::hc_title(text = "No variable importance data available") |>
+            highcharter::hc_subtitle(text = "Please check your data source")
+        )
+      }
+
       # Variables importance chart
       highcharter::highchart() |>
         highcharter::hc_add_series(data$vars$importance$percentage * 100, name = "") |>
@@ -148,13 +209,24 @@ server <- function(id) {
         ) |>
         highcharter::hc_title(text = "Variables Importance")
     })
+
     output$monthly_trends <- renderHighchart({
+      # Handle missing data
+      if (!is.data.frame(data$raw_data) || nrow(data$raw_data) == 0 ||
+            !"Contract" %in% names(data$raw_data) || !"Churn" %in% names(data$raw_data)) {
+        return(
+          highcharter::highchart() |>
+            highcharter::hc_title(text = "No contract data available") |>
+            highcharter::hc_subtitle(text = "Please check your data source")
+        )
+      }
+
       # Monthly trends chart
       data$raw_data |>
         dplyr::group_by(Contract) |>
         dplyr::summarise(
           AvgCharges = mean(MonthlyCharges, na.rm = TRUE),
-          ChurnRate = mean(Churn == "Yes") * 100
+          ChurnRate = mean(Churn == "Yes", na.rm = TRUE) * 100
         ) |>
         hchart(
           type = "column",

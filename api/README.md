@@ -60,6 +60,15 @@ curl http://localhost:8000/model/all-predictions
 
 # Get prediction for a specific customer
 curl http://localhost:8000/model/predictions/7590-VHVEG
+
+# Get churn statistics by risk groups
+curl http://localhost:8000/model/risk-groups
+
+# Get overall churn statistics
+curl http://localhost:8000/model/overall-churn
+
+# Get financial impact data
+curl http://localhost:8000/model/financial-impact
 ```
 
 ## Integration with Shiny
@@ -71,9 +80,29 @@ To use this API in your Shiny app, you can make HTTP requests to fetch the data:
 library(httr)
 library(jsonlite)
 
+# Function to fetch data from the API
+fetch_api_data <- function(endpoint) {
+  response <- GET(paste0("http://localhost:8000", endpoint))
+  if (status_code(response) == 200) {
+    return(fromJSON(content(response, "text", encoding = "UTF-8")))
+  }
+  return(NULL)
+}
+
 # Get all predictions
-response <- GET("http://localhost:8000/model/all-predictions")
-predictions_data <- fromJSON(content(response, "text", encoding = "UTF-8"))
+predictions <- fetch_api_data("/model/all-predictions")
+
+# Get risk groups data
+risk_groups <- fetch_api_data("/model/risk-groups")
+
+# Get overall churn statistics
+overall_churn <- fetch_api_data("/model/overall-churn")
+
+# Get financial impact data
+financial_impact <- fetch_api_data("/model/financial-impact")
+
+# Get model information
+model_info <- fetch_api_data("/model/info")
 
 # Then use the data in your Shiny app
 # ...

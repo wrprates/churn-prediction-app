@@ -59,6 +59,52 @@ function(pr) {
     stop("Could not find model_output.rds file. Please ensure it exists in the data directory.")
   }
 
+  # Function to verify data consistency
+  verify_data_consistency <- function() {
+    message("Verifying data consistency...")
+
+    # Check if the essential components exist
+    if (is.null(loaded_data)) {
+      message("ERROR: loaded_data is NULL")
+      return(FALSE)
+    }
+
+    required_components <- c("raw_data", "predictions", "vars",
+                             "churn_by_risk_groups", "overall_churn",
+                             "charge_for_risk_groups")
+
+    for (component in required_components) {
+      if (is.null(loaded_data[[component]])) {
+        message("WARNING: Component '", component, "' is missing")
+      } else if (is.data.frame(loaded_data[[component]]) && nrow(loaded_data[[component]]) == 0) {
+        message("WARNING: Component '", component, "' is empty")
+      } else {
+        if (is.data.frame(loaded_data[[component]])) {
+          message("OK: Component '", component, "' has ", nrow(loaded_data[[component]]), " rows")
+        } else {
+          message("OK: Component '", component, "' exists")
+        }
+      }
+    }
+
+    # Note about different sizes between raw_data and predictions
+    if (!is.null(loaded_data$raw_data) && !is.null(loaded_data$predictions)) {
+      raw_size <- nrow(loaded_data$raw_data)
+      pred_size <- nrow(loaded_data$predictions)
+
+      if (raw_size != pred_size) {
+        message("NOTE: raw_data (", raw_size, " rows) and predictions (", pred_size,
+                " rows) have different sizes - this is expected
+                 as predictions are only generated for the test set (approx. 30% of data)")
+      } else {
+        message("OK: raw_data and predictions both have ",
+                raw_size, " rows")
+      }
+    }
+
+    TRUE
+  }
+
   # Get the correct path to the model data
   data_file <- find_data_file()
 
@@ -66,7 +112,29 @@ function(pr) {
   message("Loading model data from: ", data_file)
   tryCatch({
     loaded_data <<- readRDS(data_file)
+
+    # Verify data integrity
     message("Model data loaded successfully")
+    message("Dataset summary:")
+    message("- loaded_data$raw_data rows: ", nrow(loaded_data$raw_data))
+    message("- loaded_data$predictions rows: ", nrow(loaded_data$predictions))
+
+    # Ensure we have the expected dataset size
+    expected_size <- 7043  # Based on information provided about total customer count
+    if (nrow(loaded_data$raw_data) < expected_size) {
+      warning("WARNING: Data loaded with fewer rows than expected. Got ",
+              nrow(loaded_data$raw_data), ", expected approximately ", expected_size)
+    }
+
+    # Verify that all necessary data structures exist
+    if (is.null(loaded_data$predictions)) {
+      message("Creating predictions from raw_data as it was missing")
+      loaded_data$predictions <- loaded_data$raw_data
+    }
+
+    # Run comprehensive data verification
+    verify_data_consistency()
+
   }, error = function(e) {
     message("Error loading model data: ", e$message)
     stop("Failed to load model data. Please check the file path and try again.")
@@ -102,12 +170,18 @@ function() {
   list(
     apiName = "Churn Prediction API",
     version = "1.0.0",
+    dataStructure = "The raw data contains all 7043 customers, while predictions are only available for the test set 
+    (2109 customers, about 30% of the full dataset)",
     endpoints = list(
       "/model/info" = "Get model information",
       "/model/predictions" = "Get model predictions",
       "/model/predictions/{id}" = "Get prediction for specific customer",
       "/model/risk-groups" = "Get churn by risk groups",
-      "/model/overall-churn" = "Get overall churn statistics"
+      "/model/overall-churn" = "Get overall churn statistics",
+      "/model/financial-impact" = "Get financial impact data by risk group",
+      "/model/all-predictions" = "Get all model predictions without limits",
+      "/model/colors" = "Get color palette for charts",
+      "/model/raw-data" = "Get all raw data (all customers)"
     )
   )
 }
@@ -115,13 +189,39 @@ function() {
 #* Get model information
 #* @get /model/info
 function() {
+  # Get the importance data frame without limiting to top 5
+  importance_df <- loaded_data$vars$importance
+
+  # Create a list of variable names and percentages that will be properly structured
+  variable_importance <- list(
+    variable = importance_df$variable,
+    percentage = importance_df$percentage
+  )
+
+  # Log the customer count for debugging
+  total_customers <- nrow(loaded_data$raw_data)
+  total_predictions <- nrow(loaded_data$predictions)
+  message("Reporting total customers in /model/info: ", total_customers)
+  message("Total predictions available: ", total_predictions)
+
+  # Explain the difference in customer counts
+  if (total_customers != total_predictions) {
+    message("Note: raw_data contains all customers (", total_customers,
+            "), while predictions contains only test set customers (", total_predictions,
+            ") - approximately 30% of the full dataset")
+  }
+
   list(
-    totalCustomers = nrow(loaded_data$raw_data),
+    totalCustomers = total_customers,
+    predictionsAvailable = total_predictions,
     churnRate = paste0(round(mean(loaded_data$raw_data$Churn == "Yes") * 100, 2), "%"),
-    importantVariables = loaded_data$vars$importance %>%
-      head(5) %>%
-      select(variable, percentage) %>%
-      as.list()
+    importantVariables = variable_importance,
+    datasetExplanation = "The raw data contains all customers,
+    while predictions are only available for the test set (about 30% of customers)",
+    datasetSummary = list(
+      raw_data_rows = total_customers,
+      predictions_rows = total_predictions
+    )
   )
 }
 
@@ -135,17 +235,27 @@ function(limit = "100", riskgroup = "", haschurned = "") {
 
   # Apply filters if provided
   if (!is.null(riskgroup) && riskgroup != "") {
-    result <- result %>% filter(RiskGroup == riskgroup)
+    result <- result |> filter(RiskGroup == riskgroup)
   }
 
   if (!is.null(haschurned) && haschurned != "") {
-    result <- result %>% filter(Churn == haschurned)
+    result <- result |> filter(Churn == haschurned)
   }
 
   # Limit the number of results unless "all" is specified
   if (tolower(limit) == "all") {
-    # Return all results
-    result %>%
+    # Return all results with logging to help troubleshoot
+    message("Predictions endpoint with limit=all. Total rows: ", nrow(result))
+
+    # Ensure no unexpected filtering occurs
+    if (nrow(result) < nrow(loaded_data$predictions) &&
+          is.null(riskgroup) && riskgroup == "" &&
+          is.null(haschurned) && haschurned == "") {
+      message("WARNING: Data size mismatch when limit=all. Expected ",
+              nrow(loaded_data$predictions), " but got ", nrow(result))
+    }
+
+    result |>
       select(customerID, Churn, Predict, PredictProbability, RiskGroup,
              tenure, Contract, MonthlyCharges, TotalCharges)
   } else {
@@ -161,8 +271,9 @@ function(limit = "100", riskgroup = "", haschurned = "") {
     }
 
     # Apply limit
-    result %>%
-      head(limit_num) %>%
+    message("Predictions endpoint with limit=", limit_num, ". Total rows before limit: ", nrow(result))
+    result |>
+      head(limit_num) |>
       select(customerID, Churn, Predict, PredictProbability, RiskGroup,
              tenure, Contract, MonthlyCharges, TotalCharges)
   }
@@ -177,7 +288,7 @@ function(id = "") {
     return(list(error = "Customer ID is required"))
   }
 
-  customer <- loaded_data$predictions %>%
+  customer <- loaded_data$predictions |>
     filter(customerID == id)
 
   if (nrow(customer) == 0) {
@@ -208,5 +319,39 @@ function() {
 #* Get all model predictions (not limited)
 #* @get /model/all-predictions
 function() {
+  # Ensure we return the full dataset without any filtering or limitations
+  message("Serving all-predictions endpoint. Total rows: ", nrow(loaded_data$predictions))
+  message("Note: This returns predictions for test data only (approximately 30% of full dataset)")
+
+  # Verify data integrity before returning
+  if (is.null(loaded_data$predictions) || nrow(loaded_data$predictions) == 0) {
+    message("WARNING: Predictions data is empty or NULL")
+  }
+
   loaded_data$predictions
+}
+
+#* Get color palette for charts
+#* @get /model/colors
+function() {
+  if (!is.null(loaded_data$colors)) {
+    loaded_data$colors
+  } else {
+    # Default colors if not available
+    c("#e8e9ed", "#e89978", "#4a57a6", "#4192b5")
+  }
+}
+
+#* Get all raw data (all customers)
+#* @get /model/raw-data
+function() {
+  # This returns the complete dataset including customers without predictions
+  message("Serving raw-data endpoint. Total rows: ", nrow(loaded_data$raw_data))
+
+  # Verify data integrity before returning
+  if (is.null(loaded_data$raw_data) || nrow(loaded_data$raw_data) == 0) {
+    message("WARNING: Raw data is empty or NULL")
+  }
+
+  loaded_data$raw_data
 }

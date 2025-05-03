@@ -115,15 +115,15 @@ server <- function(id) {
     data <- load_data$load_data()
 
     is_filter_active <- function(filter_value) {
-      return(!is.null(filter_value) && length(filter_value) > 0)
+      !is.null(filter_value) && length(filter_value) > 0
     }
 
 
     apply_filter <- function(data_frame, filter_value, column) {
       if (is_filter_active(filter_value)) {
-        return(data_frame |> filter(!!sym(column) %in% filter_value))
+        data_frame |> filter(!!sym(column) %in% filter_value)
       }
-      return(data_frame)
+      data_frame
     }
 
     observe({

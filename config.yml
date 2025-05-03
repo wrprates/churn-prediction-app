@@ -1,3 +1,20 @@
 default:
   rhino_log_level: !expr Sys.getenv("RHINO_LOG_LEVEL", "INFO")
   rhino_log_file: !expr Sys.getenv("RHINO_LOG_FILE", NA)
+  use_api: true
+  api_url: "http://164.90.245.110"
+  local_fallback: true
+
+development:
+  use_api: true
+  api_url: "http://164.90.245.110"
+  local_fallback: true
+
+production:
+  use_api: true
+  api_url: "http://164.90.245.110"
+  local_fallback: true
+
+testing:
+  use_api: true
+  local_fallback: true

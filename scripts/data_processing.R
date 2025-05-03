@@ -30,7 +30,12 @@ initialize_data <- function() {
 
   # Setup h2o
   ml$data$h2o <- as.h2o(ml$data$raw)
-  ml$data$splits <- h2o.splitFrame(ml$data$h2o, ratios = 0.7)
+
+  # Set a fixed random seed for reproducibility
+  set.seed(123)
+
+  # Use the seed parameter directly in splitFrame for consistent results
+  ml$data$splits <- h2o.splitFrame(ml$data$h2o, ratios = 0.7, seed = 123)
   names(ml$data$splits) <- c("train", "test")
 
   # Running the model
