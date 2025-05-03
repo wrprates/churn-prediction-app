@@ -9,3 +9,4 @@ package.json
 .DS_Store
 .Rproj
 rsconnect/
+.httr-oauth
