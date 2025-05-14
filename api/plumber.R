@@ -20,16 +20,23 @@ function(pr) {
     script_dir <- getwd()
     message("Current working directory: ", script_dir)
 
-    # Direct path to the data file in api/data
-    data_path <- "api/data/model_output.rds"
+    # Try several possible paths for the data file
+    possible_paths <- c(
+      "data/model_output.rds", # If working dir is api folder
+      "../data/model_output.rds", # If we need to go up from api folder
+      "api/data/model_output.rds" # If working dir is project root
+    )
 
-    # Check if the file exists at the direct path
-    if (file.exists(data_path)) {
-      message("Found data file at: ", data_path)
-      return(data_path)
+    # Check each possible path
+    for (path in possible_paths) {
+      message("Checking path: ", path)
+      if (file.exists(path)) {
+        message("Found data file at: ", path)
+        return(path)
+      }
     }
 
-    # If file doesn't exist at the expected location, stop with an error
+    # If file doesn't exist at any of the expected locations, stop with an error
     stop(
       "Could not find model_output.rds file. Please ensure it exists in the api/data directory."
     )
