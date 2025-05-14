@@ -72,4 +72,4 @@ jobs:
       - name: Run tests
         if: always()
         shell: Rscript {0}
-        run: rhino::test()
+        run: rhino::test_r()
