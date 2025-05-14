@@ -69,3 +69,7 @@ jobs:
         shell: Rscript {0}
         run: rhino::build_sass()
 
+      - name: Run tests
+        if: always()
+        shell: Rscript {0}
+        run: rhino::test()
