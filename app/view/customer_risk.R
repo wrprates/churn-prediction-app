@@ -1,8 +1,15 @@
 box::use(
   bslib[card, card_header, layout_column_wrap, page_fluid],
   dplyr[filter, distinct, pull],
-  highcharter[hc_add_series, hc_xAxis, hc_yAxis, hcaes,
-              hchart, highchartOutput, renderHighchart],
+  highcharter[
+    hc_add_series,
+    hc_xAxis,
+    hc_yAxis,
+    hcaes,
+    hchart,
+    highchartOutput,
+    renderHighchart
+  ],
   htmltools[HTML],
   reactable[reactable, reactableOutput, renderReactable, colDef, colFormat],
   rlang[sym],
@@ -11,7 +18,7 @@ box::use(
 )
 
 box::use(
-  app/logic/load_data,
+  app / logic / data_store
 )
 
 #' @export
@@ -112,12 +119,15 @@ ui <- function(id) {
 #' @export
 server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    data <- load_data$load_data()
+    # Get data from shared data store
+    message("Customer Risk: Getting data from data_store")
+    data <- data_store$data_store$get_data()
+
+    message("Customer Risk module using shared data")
 
     is_filter_active <- function(filter_value) {
       !is.null(filter_value) && length(filter_value) > 0
     }
-
 
     apply_filter <- function(data_frame, filter_value, column) {
       if (is_filter_active(filter_value)) {
@@ -147,7 +157,10 @@ server <- function(id) {
       tenure_values <- data$predictions |>
         filter(RiskGroup %in% c("1", "2", "3")) |>
         pull(tenure) |>
-        cut(breaks = c(0, 12, 24, 36, 48, 60, 72), labels = c("0-12", "13-24", "25-36", "37-48", "49-60", "61-72"))
+        cut(
+          breaks = c(0, 12, 24, 36, 48, 60, 72),
+          labels = c("0-12", "13-24", "25-36", "37-48", "49-60", "61-72")
+        )
       tenure_choices <- levels(tenure_values)
 
       payment_choices <- data$predictions |>
@@ -266,8 +279,7 @@ server <- function(id) {
         ) |>
         hc_add_series(
           name = "Cumulative % of canceled customers (recall)",
-          data = (data$churn_by_risk_groups |>
-                    filter(Churn == "Yes"))$cum_prop,
+          data = (data$churn_by_risk_groups |> filter(Churn == "Yes"))$cum_prop,
           type = "line",
           dashStyle = "DashDot"
         ) |>
@@ -311,12 +323,18 @@ server <- function(id) {
             InternetService = colDef(name = "Internet Service", minWidth = 150),
             OnlineSecurity = colDef(name = "Online Security", minWidth = 150),
             OnlineBackup = colDef(name = "Online Backup", minWidth = 150),
-            DeviceProtection = colDef(name = "Device Protection", minWidth = 160),
+            DeviceProtection = colDef(
+              name = "Device Protection",
+              minWidth = 160
+            ),
             TechSupport = colDef(name = "Tech Support", minWidth = 150),
             StreamingTV = colDef(name = "Streaming TV", minWidth = 130),
             StreamingMovies = colDef(name = "Streaming Movies", minWidth = 150),
             Contract = colDef(name = "Contract Type", minWidth = 150),
-            PaperlessBilling = colDef(name = "Paperless Billing", minWidth = 150),
+            PaperlessBilling = colDef(
+              name = "Paperless Billing",
+              minWidth = 150
+            ),
             PaymentMethod = colDef(name = "Payment Method", minWidth = 150),
             MonthlyCharges = colDef(
               name = "Monthly Charges",

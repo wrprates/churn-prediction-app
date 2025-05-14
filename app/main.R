@@ -1,18 +1,16 @@
 box::use(
-  bslib[nav_panel, nav_spacer, page_navbar, navbar_options],
+  bslib[nav_panel, nav_spacer, page_navbar],
   shiny.router[router_server],
-  shiny[busyIndicatorOptions,
-        moduleServer,
-        NS,
-        useBusyIndicators],
+  shiny[busyIndicatorOptions, moduleServer, NS, useBusyIndicators],
 )
 
 box::use(
-  app/view/churn_overview,
-  app/view/customer_risk,
-  app/view/financial_impact,
-  app/view/predictive_model,
-  app/logic/theme,
+  app / view / churn_overview,
+  app / view / customer_risk,
+  app / view / financial_impact,
+  app / view / predictive_model,
+  app / logic / theme,
+  app / logic / data_store,
 )
 
 #' @export
@@ -42,7 +40,7 @@ ui <- function(id) {
     nav_panel("Risk Analysis", customer_risk$ui(ns("risk"))),
     nav_panel("Financial Impact", financial_impact$ui(ns("financial"))),
     theme = theme$app_theme,
-    bg = "#f8f9fa"
+    navbar_options = theme$app_navbar_options
   )
 }
 
@@ -50,6 +48,13 @@ ui <- function(id) {
 server <- function(id) {
   moduleServer(id, function(input, output, session) {
     router_server()
+
+    # Initialize data store once in the main app
+    message("Initializing data store in main app...")
+    # Use the exported data_store instance's get_data method
+    data_store$data_store$get_data()
+    message("Data store initialized successfully!")
+
     # Initialize modules
     churn_overview$server("overview")
     predictive_model$server("model")

@@ -2,13 +2,23 @@ box::use(
   bsicons[bs_icon],
   bslib[card, card_header, layout_column_wrap, page_fluid, value_box],
   dplyr[filter, group_by, pull, summarise],
-  highcharter[hc_title, hc_xAxis, hc_yAxis, hc_tooltip,
-              hcaes, hchart, highchartOutput, JS, renderHighchart],
+  highcharter[
+    hc_plotOptions,
+    hc_title,
+    hc_xAxis,
+    hc_yAxis,
+    hc_tooltip,
+    hcaes,
+    hchart,
+    highchartOutput,
+    JS,
+    renderHighchart
+  ],
   shiny[moduleServer, NS, renderText, textOutput],
 )
 
 box::use(
-  app/logic/load_data,
+  app / logic / data_store
 )
 
 #' @export
@@ -60,7 +70,12 @@ ui <- function(id) {
 #' @export
 server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    data <- load_data$load_data()
+    # Get data from shared data store
+    message("Financial Impact: Getting data from data_store")
+    data <- data_store$data_store$get_data()
+
+    message("Financial Impact module using shared data")
+
     # Calculate financial metrics
     output$total_revenue <- renderText({
       total <- sum(data$raw_data$MonthlyCharges, na.rm = TRUE)
@@ -84,18 +99,22 @@ server <- function(id) {
           hcaes(x = RiskGroup, y = SumMonthlyCharges, group = Churn),
           type = "column"
         ) |>
-        highcharter::hc_plotOptions(column = list(
-          stacking = "normal",
-          dataLabels = list(
-            enabled = TRUE,
-            formatter = JS("
+        hc_plotOptions(
+          column = list(
+            stacking = "normal",
+            dataLabels = list(
+              enabled = TRUE,
+              formatter = JS(
+                "
               function() {
                 if(this.y === 0) return null;
                 return '$' + Math.round(this.y / 1000) + 'k';
               }
-            ")
+            "
+              )
+            )
           )
-        )) |>
+        ) |>
         hc_yAxis(
           title = list(text = "Monthly Charges ($)")
         ) |>
@@ -106,7 +125,9 @@ server <- function(id) {
           text = "Monthly Charges by Risk Group"
         ) |>
         hc_tooltip(
-          formatter = JS("function() { return this.series.name + ' (Risk Group ' + this.point.x + '): <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }"), #nolint
+          formatter = JS(
+            "function() { return this.series.name + ' (Risk Group ' + this.point.x + '): <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }" #nolint
+          ),
           useHTML = TRUE
         )
     })
@@ -125,7 +146,9 @@ server <- function(id) {
           text = "Revenue by Contract Type"
         ) |>
         hc_tooltip(
-          formatter = JS("function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }"), #nolint
+          formatter = JS(
+            "function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }"
+          ), #nolint
           useHTML = TRUE
         )
     })
@@ -147,7 +170,9 @@ server <- function(id) {
           title = list(text = "Average Monthly Charges ($)")
         ) |>
         hc_tooltip(
-          formatter = JS("function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }"), #nolint
+          formatter = JS(
+            "function() { return this.point.name + ': <b>$' + Highcharts.numberFormat(this.y, 2) + '</b>'; }"
+          ), #nolint
           useHTML = TRUE
         )
     })

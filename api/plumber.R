@@ -14,95 +14,25 @@ loaded_data <- NULL
 # Plumber router function
 #* @plumber
 function(pr) {
-  # Find the data file, checking multiple possible locations
+  # Find the data file in the api/data directory
   find_data_file <- function() {
     # Get the current directory
     script_dir <- getwd()
     message("Current working directory: ", script_dir)
 
-    # Try different possible locations for the data file using only relative paths
-    possible_paths <- c(
-      file.path("data", "model_output.rds"),                      # relative from current dir
-      file.path("..", "data", "model_output.rds"),                # up one level
-      file.path(".", "data", "model_output.rds"),                 # explicit current dir
-      "model_output.rds"                                          # directly in current dir
+    # Direct path to the data file in api/data
+    data_path <- "api/data/model_output.rds"
+
+    # Check if the file exists at the direct path
+    if (file.exists(data_path)) {
+      message("Found data file at: ", data_path)
+      return(data_path)
+    }
+
+    # If file doesn't exist at the expected location, stop with an error
+    stop(
+      "Could not find model_output.rds file. Please ensure it exists in the api/data directory."
     )
-
-    # Try each path
-    for (path in possible_paths) {
-      message("Checking for data file at: ", path)
-      if (file.exists(path)) {
-        message("Found data file at: ", path)
-        return(path)
-      }
-    }
-
-    # If not found, as a last resort, try to find it by searching upwards
-    # This avoids using absolute paths but still finds the file
-    current <- script_dir
-    max_levels <- 3  # Limit how far up we'll search
-
-    for (i in 1:max_levels) {
-      test_path <- file.path(current, "data", "model_output.rds")
-      message("Trying path: ", test_path)
-      if (file.exists(test_path)) {
-        message("Found data file at: ", test_path)
-        # Return a relative path by calculating difference from current dir
-        rel_path <- file.path(paste(rep("..", i), collapse = "/"), "data", "model_output.rds")
-        message("Using relative path: ", rel_path)
-        return(rel_path)
-      }
-      # Move up one directory
-      current <- dirname(current)
-    }
-
-    stop("Could not find model_output.rds file. Please ensure it exists in the data directory.")
-  }
-
-  # Function to verify data consistency
-  verify_data_consistency <- function() {
-    message("Verifying data consistency...")
-
-    # Check if the essential components exist
-    if (is.null(loaded_data)) {
-      message("ERROR: loaded_data is NULL")
-      return(FALSE)
-    }
-
-    required_components <- c("raw_data", "predictions", "vars",
-                             "churn_by_risk_groups", "overall_churn",
-                             "charge_for_risk_groups")
-
-    for (component in required_components) {
-      if (is.null(loaded_data[[component]])) {
-        message("WARNING: Component '", component, "' is missing")
-      } else if (is.data.frame(loaded_data[[component]]) && nrow(loaded_data[[component]]) == 0) {
-        message("WARNING: Component '", component, "' is empty")
-      } else {
-        if (is.data.frame(loaded_data[[component]])) {
-          message("OK: Component '", component, "' has ", nrow(loaded_data[[component]]), " rows")
-        } else {
-          message("OK: Component '", component, "' exists")
-        }
-      }
-    }
-
-    # Note about different sizes between raw_data and predictions
-    if (!is.null(loaded_data$raw_data) && !is.null(loaded_data$predictions)) {
-      raw_size <- nrow(loaded_data$raw_data)
-      pred_size <- nrow(loaded_data$predictions)
-
-      if (raw_size != pred_size) {
-        message("NOTE: raw_data (", raw_size, " rows) and predictions (", pred_size,
-                " rows) have different sizes - this is expected
-                 as predictions are only generated for the test set (approx. 30% of data)")
-      } else {
-        message("OK: raw_data and predictions both have ",
-                raw_size, " rows")
-      }
-    }
-
-    TRUE
   }
 
   # Get the correct path to the model data
@@ -110,35 +40,23 @@ function(pr) {
 
   # Load model data when server starts
   message("Loading model data from: ", data_file)
-  tryCatch({
-    loaded_data <<- readRDS(data_file)
+  tryCatch(
+    {
+      loaded_data <<- readRDS(data_file)
 
-    # Verify data integrity
-    message("Model data loaded successfully")
-    message("Dataset summary:")
-    message("- loaded_data$raw_data rows: ", nrow(loaded_data$raw_data))
-    message("- loaded_data$predictions rows: ", nrow(loaded_data$predictions))
-
-    # Ensure we have the expected dataset size
-    expected_size <- 7043  # Based on information provided about total customer count
-    if (nrow(loaded_data$raw_data) < expected_size) {
-      warning("WARNING: Data loaded with fewer rows than expected. Got ",
-              nrow(loaded_data$raw_data), ", expected approximately ", expected_size)
+      # Display simple data summary
+      message("Model data loaded successfully")
+      message("Dataset summary:")
+      message("- loaded_data$raw_data rows: ", nrow(loaded_data$raw_data))
+      message("- loaded_data$predictions rows: ", nrow(loaded_data$predictions))
+    },
+    error = function(e) {
+      message("Error loading model data: ", e$message)
+      stop(
+        "Failed to load model data. Please check the file path and try again."
+      )
     }
-
-    # Verify that all necessary data structures exist
-    if (is.null(loaded_data$predictions)) {
-      message("Creating predictions from raw_data as it was missing")
-      loaded_data$predictions <- loaded_data$raw_data
-    }
-
-    # Run comprehensive data verification
-    verify_data_consistency()
-
-  }, error = function(e) {
-    message("Error loading model data: ", e$message)
-    stop("Failed to load model data. Please check the file path and try again.")
-  })
+  )
 
   # Set up CORS
   pr$registerHook("preroute", function(req) {
@@ -206,15 +124,22 @@ function() {
 
   # Explain the difference in customer counts
   if (total_customers != total_predictions) {
-    message("Note: raw_data contains all customers (", total_customers,
-            "), while predictions contains only test set customers (", total_predictions,
-            ") - approximately 30% of the full dataset")
+    message(
+      "Note: raw_data contains all customers (",
+      total_customers,
+      "), while predictions contains only test set customers (",
+      total_predictions,
+      ") - approximately 30% of the full dataset"
+    )
   }
 
   list(
     totalCustomers = total_customers,
     predictionsAvailable = total_predictions,
-    churnRate = paste0(round(mean(loaded_data$raw_data$Churn == "Yes") * 100, 2), "%"),
+    churnRate = paste0(
+      round(mean(loaded_data$raw_data$Churn == "Yes") * 100, 2),
+      "%"
+    ),
     importantVariables = variable_importance,
     datasetExplanation = "The raw data contains all customers,
     while predictions are only available for the test set (about 30% of customers)",
@@ -248,34 +173,68 @@ function(limit = "100", riskgroup = "", haschurned = "") {
     message("Predictions endpoint with limit=all. Total rows: ", nrow(result))
 
     # Ensure no unexpected filtering occurs
-    if (nrow(result) < nrow(loaded_data$predictions) &&
-          is.null(riskgroup) && riskgroup == "" &&
-          is.null(haschurned) && haschurned == "") {
-      message("WARNING: Data size mismatch when limit=all. Expected ",
-              nrow(loaded_data$predictions), " but got ", nrow(result))
+    if (
+      nrow(result) < nrow(loaded_data$predictions) &&
+        is.null(riskgroup) &&
+        riskgroup == "" &&
+        is.null(haschurned) &&
+        haschurned == ""
+    ) {
+      message(
+        "WARNING: Data size mismatch when limit=all. Expected ",
+        nrow(loaded_data$predictions),
+        " but got ",
+        nrow(result)
+      )
     }
 
     result |>
-      select(customerID, Churn, Predict, PredictProbability, RiskGroup,
-             tenure, Contract, MonthlyCharges, TotalCharges)
+      select(
+        customerID,
+        Churn,
+        Predict,
+        PredictProbability,
+        RiskGroup,
+        tenure,
+        Contract,
+        MonthlyCharges,
+        TotalCharges
+      )
   } else {
     # Apply limit - convert to numeric, default to 100 if not a valid number
-    limit_num <- tryCatch({
-      as.numeric(limit)
-    }, error = function(e) {
-      100  # Default to 100 if conversion fails
-    })
+    limit_num <- tryCatch(
+      {
+        as.numeric(limit)
+      },
+      error = function(e) {
+        100 # Default to 100 if conversion fails
+      }
+    )
 
     if (is.na(limit_num) || limit_num <= 0) {
-      limit_num <- 100  # Default to 100 if invalid
+      limit_num <- 100 # Default to 100 if invalid
     }
 
     # Apply limit
-    message("Predictions endpoint with limit=", limit_num, ". Total rows before limit: ", nrow(result))
+    message(
+      "Predictions endpoint with limit=",
+      limit_num,
+      ". Total rows before limit: ",
+      nrow(result)
+    )
     result |>
       head(limit_num) |>
-      select(customerID, Churn, Predict, PredictProbability, RiskGroup,
-             tenure, Contract, MonthlyCharges, TotalCharges)
+      select(
+        customerID,
+        Churn,
+        Predict,
+        PredictProbability,
+        RiskGroup,
+        tenure,
+        Contract,
+        MonthlyCharges,
+        TotalCharges
+      )
   }
 }
 
@@ -320,8 +279,13 @@ function() {
 #* @get /model/all-predictions
 function() {
   # Ensure we return the full dataset without any filtering or limitations
-  message("Serving all-predictions endpoint. Total rows: ", nrow(loaded_data$predictions))
-  message("Note: This returns predictions for test data only (approximately 30% of full dataset)")
+  message(
+    "Serving all-predictions endpoint. Total rows: ",
+    nrow(loaded_data$predictions)
+  )
+  message(
+    "Note: This returns predictions for test data only (approximately 30% of full dataset)"
+  )
 
   # Verify data integrity before returning
   if (is.null(loaded_data$predictions) || nrow(loaded_data$predictions) == 0) {

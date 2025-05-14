@@ -39,7 +39,11 @@ initialize_data <- function() {
   names(ml$data$splits) <- c("train", "test")
 
   # Running the model
-  ml$model <- h2o.gbm(x = ml$vars$x, y = ml$vars$y, training_frame = ml$data$splits$train)
+  ml$model <- h2o.gbm(
+    x = ml$vars$x,
+    y = ml$vars$y,
+    training_frame = ml$data$splits$train
+  )
   ml$predictions <- h2o.predict(ml$model, ml$data$splits$test)
   h2o.performance(ml$model, ml$data$splits$test)
 
@@ -53,7 +57,14 @@ initialize_data <- function() {
     ) |>
     # 11 is not a magic number, it is inverting the order of the deciles
     mutate(RiskGroup = as.factor(11 - ntile(PredictProbability, 10))) |>
-    select(customerID, Churn, Predict, PredictProbability, RiskGroup, everything()) |>
+    select(
+      customerID,
+      Churn,
+      Predict,
+      PredictProbability,
+      RiskGroup,
+      everything()
+    ) |>
     arrange(desc(PredictProbability))
 
   # Calculate overall churn
@@ -111,16 +122,16 @@ initialize_data <- function() {
     vars = list(
       importance = ml$vars$importance
     ),
-    colors = colors  # Add colors to the output list
+    colors = colors # Add colors to the output list
   )
 
   # Create data directory if it doesn't exist
-  if (!dir.exists("data")) {
-    dir.create("data")
+  if (!dir.exists("api/data")) {
+    dir.create("api/data")
   }
 
   # Save output to RDS
-  cache_path <- "data/model_output.rds"
+  cache_path <- "api/data/model_output.rds"
   saveRDS(output_list, cache_path)
 
   # Return the output
@@ -141,4 +152,4 @@ train_model <- function(data) {
 # Run the data processing when script is sourced or run directly
 message("Starting data processing...")
 result <- initialize_data()
-message("Processing complete and data saved to 'data/model_output.rds'")
+message("Processing complete and data saved to 'api/data/model_output.rds'")
