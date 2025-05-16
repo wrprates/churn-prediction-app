@@ -8,7 +8,7 @@ library(dplyr)
 loaded_data <- NULL
 
 #* @apiTitle Churn Prediction API
-#* @apiDescription API for accessing churn prediction model data
+#* @apiDescription API for accessing churn prediction model data - GitHub: [https://github.com/wrprates/churn-prediction-app](https://github.com/wrprates/churn-prediction-app)
 #* @apiVersion 1.0.0
 
 # Plumber router function
@@ -95,7 +95,7 @@ function() {
   list(
     apiName = "Churn Prediction API",
     version = "1.0.0",
-    dataStructure = "The raw data contains all 7043 customers, while predictions are only available for the test set 
+    dataStructure = "The raw data contains all 7043 customers, while predictions are only available for the test set
     (2109 customers, about 30% of the full dataset)",
     endpoints = list(
       "/model/info" = "Get model information",
