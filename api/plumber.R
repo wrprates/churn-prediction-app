@@ -3,47 +3,54 @@
 
 library(plumber)
 library(dplyr)
+library(h2o)
+library(tibble)
 
-# Initialize data variable
+# Initialize data and model variables
 loaded_data <- NULL
+churn_model <- NULL
 
 #* @apiTitle Churn Prediction API
 #* @apiDescription API for accessing churn prediction model data - GitHub: [https://github.com/wrprates/churn-prediction-app](https://github.com/wrprates/churn-prediction-app)
-#* @apiVersion 1.0.0
+#* @apiVersion 1.1.0
 
 # Plumber router function
 #* @plumber
 function(pr) {
-  # Find the data file in the api/data directory
-  find_data_file <- function() {
+  # Initialize H2O
+  h2o.init()
+
+  # Find model and data files in the api/data directory
+  find_file <- function(filename) {
     # Get the current directory
     script_dir <- getwd()
     message("Current working directory: ", script_dir)
 
-    # Try several possible paths for the data file
+    # Try several possible paths for the file
     possible_paths <- c(
-      "data/model_output.rds", # If working dir is api folder
-      "../data/model_output.rds", # If we need to go up from api folder
-      "api/data/model_output.rds" # If working dir is project root
+      paste0("data/", filename), # If working dir is api folder
+      paste0("../data/", filename), # If we need to go up from api folder
+      paste0("api/data/", filename) # If working dir is project root
     )
 
     # Check each possible path
     for (path in possible_paths) {
       message("Checking path: ", path)
       if (file.exists(path)) {
-        message("Found data file at: ", path)
+        message("Found file at: ", path)
         return(path)
       }
     }
 
     # If file doesn't exist at any of the expected locations, stop with an error
     stop(
-      "Could not find model_output.rds file. Please ensure it exists in the api/data directory."
+      paste0("Could not find ", filename, " file. Please ensure it exists in the api/data directory.")
     )
   }
 
-  # Get the correct path to the model data
-  data_file <- find_data_file()
+  # Get the correct path to the model data and model file
+  data_file <- find_file("model_output.rds")
+  model_file <- find_file("churn_model.h2o")
 
   # Load model data when server starts
   message("Loading model data from: ", data_file)
@@ -62,6 +69,26 @@ function(pr) {
       stop(
         "Failed to load model data. Please check the file path and try again."
       )
+    }
+  )
+
+  # Load the saved H2O model
+  message("Loading H2O model from: ", model_file)
+  tryCatch(
+    {
+      # Get the directory part of the model_file path
+      model_dir <- dirname(model_file)
+      model_name <- basename(model_file)
+      # Remove .h2o extension if present
+      model_name <- sub("\\.h2o$", "", model_name)
+
+      # Load the model
+      churn_model <<- h2o.loadModel(path = paste0(model_dir, "/", model_name))
+      message("H2O model loaded successfully")
+    },
+    error = function(e) {
+      message("Error loading H2O model: ", e$message)
+      message("API will continue with pre-computed predictions only")
     }
   )
 
@@ -94,20 +121,22 @@ function(pr) {
 function() {
   list(
     apiName = "Churn Prediction API",
-    version = "1.0.0",
+    version = "1.1.0",
     dataStructure = "The raw data contains all 7043 customers, while predictions are only available for the test set
     (2109 customers, about 30% of the full dataset)",
     endpoints = list(
       "/model/info" = "Get model information",
       "/model/predictions" = "Get model predictions",
       "/model/predictions/{id}" = "Get prediction for specific customer",
+      "/model/predict" = "Make predictions on new customer data (POST)",
       "/model/risk-groups" = "Get churn by risk groups",
       "/model/overall-churn" = "Get overall churn statistics",
       "/model/financial-impact" = "Get financial impact data by risk group",
       "/model/all-predictions" = "Get all model predictions without limits",
       "/model/colors" = "Get color palette for charts",
       "/model/raw-data" = "Get all raw data (all customers)"
-    )
+    ),
+    modelStatus = if (is.null(churn_model)) "Not loaded" else "Loaded and ready for predictions"
   )
 }
 
@@ -325,4 +354,76 @@ function() {
   }
 
   loaded_data$raw_data
+}
+
+#* Make predictions on new customer data
+#* @param customerData A JSON object with customer data
+#* @post /model/predict
+function(req) {
+  # Check if model is loaded
+  if (is.null(churn_model)) {
+    return(list(error = "Model not loaded. Please initialize the API with a valid model."))
+  }
+
+  # Parse the request body
+  customer_data <- req$body
+
+  # Validate the input data
+  if (is.null(customer_data) || length(customer_data) == 0) {
+    return(list(error = "No customer data provided"))
+  }
+
+  # Convert the input data to a data frame
+  tryCatch(
+    {
+      # If customer_data is a list but not a data frame, convert it
+      if (is.list(customer_data) && !is.data.frame(customer_data)) {
+        # If it's a single customer (list of values), convert to a single-row data frame
+        if (!any(sapply(customer_data, is.list))) {
+          customer_df <- as.data.frame(t(unlist(customer_data)), stringsAsFactors = FALSE)
+        } else {
+          # If it's a list of customers, use do.call to bind them
+          customer_df <- do.call(
+            rbind,
+            lapply(customer_data, function(x) {
+              as.data.frame(x, stringsAsFactors = FALSE)
+            })
+          )
+        }
+      } else if (is.data.frame(customer_data)) {
+        customer_df <- customer_data
+      } else {
+        return(list(error = "Invalid customer data format"))
+      }
+
+      # Convert categorical variables to factors
+      for (col in names(customer_df)) {
+        if (is.character(customer_df[[col]])) {
+          customer_df[[col]] <- as.factor(customer_df[[col]])
+        }
+      }
+
+      # Convert to H2O frame for prediction
+      h2o_frame <- as.h2o(customer_df)
+
+      # Make predictions
+      predictions <- h2o.predict(churn_model, h2o_frame)
+
+      # Process the predictions
+      result <- customer_df |>
+        tibble::as_tibble() |>
+        bind_cols(
+          as_tibble(predictions) |>
+            select(Predict = predict, PredictProbability = Yes) |>
+            mutate(PredictProbability = round(100 * PredictProbability, 2))
+        ) |>
+        mutate(RiskGroup = as.factor(11 - ntile(PredictProbability, 10))) |>
+        arrange(desc(PredictProbability))
+
+      return(result)
+    },
+    error = function(e) {
+      return(list(error = paste("Error making predictions:", e$message)))
+    }
+  )
 }

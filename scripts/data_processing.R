@@ -5,7 +5,7 @@ library("readr")
 library("tibble")
 
 # Main function to initialize data and create the model
-initialize_data <- function() {
+initialize_data <- function(save_model = TRUE) {
   # Create main container
   ml <- list()
 
@@ -39,11 +39,8 @@ initialize_data <- function() {
   names(ml$data$splits) <- c("train", "test")
 
   # Running the model
-  ml$model <- h2o.gbm(
-    x = ml$vars$x,
-    y = ml$vars$y,
-    training_frame = ml$data$splits$train
-  )
+  ml$model <- train_model(ml$vars$x, ml$vars$y, ml$data$splits$train)
+
   ml$predictions <- h2o.predict(ml$model, ml$data$splits$test)
   h2o.performance(ml$model, ml$data$splits$test)
 
@@ -134,22 +131,54 @@ initialize_data <- function() {
   cache_path <- "api/data/model_output.rds"
   saveRDS(output_list, cache_path)
 
+  # Save the model separately if requested
+  if (save_model) {
+    model_path <- h2o.saveModel(ml$model, path = "api/data", force = TRUE)
+    file.rename(model_path, file.path("api/data", "churn_model.h2o"))
+    message("H2O model saved to 'api/data/churn_model.h2o'")
+  }
+
   # Return the output
   output_list
 }
 
 # Function to train the model
-train_model <- function(data) {
+train_model <- function(x_vars, y_var, training_frame) {
   # Train GBM model
   model <- h2o::h2o.gbm(
-    x = setdiff(names(data$raw_data), c("Churn", "customerID")),
-    y = "Churn",
-    training_frame = data$splits$train
+    x = x_vars,
+    y = y_var,
+    training_frame = training_frame
   )
   model
 }
 
+# Function to make predictions with a saved model
+predict_with_model <- function(model, new_data) {
+  # Convert data to h2o frame if it's not already
+  if (!inherits(new_data, "H2OFrame")) {
+    new_data <- as.h2o(new_data)
+  }
+
+  # Make predictions
+  predictions <- h2o.predict(model, new_data)
+
+  # Process predictions
+  result <- as_tibble(new_data) |>
+    bind_cols(
+      as_tibble(predictions) |>
+        select(Predict = predict, PredictProbability = Yes) |>
+        mutate(PredictProbability = round(100 * PredictProbability, 2))
+    ) |>
+    # 11 is not a magic number, it is inverting the order of the deciles
+    mutate(RiskGroup = as.factor(11 - ntile(PredictProbability, 10))) |>
+    arrange(desc(PredictProbability))
+
+  return(result)
+}
+
 # Run the data processing when script is sourced or run directly
 message("Starting data processing...")
-result <- initialize_data()
+result <- initialize_data(save_model = TRUE)
 message("Processing complete and data saved to 'api/data/model_output.rds'")
+message("H2O model saved to 'api/data/churn_model.h2o'")
