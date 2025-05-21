@@ -124,7 +124,7 @@ initialize_data <- function(save_model = TRUE) {
 
   # Create data directory if it doesn't exist
   if (!dir.exists("api/data")) {
-    dir.create("api/data")
+    dir.create("api/data", recursive = TRUE)
   }
 
   # Save output to RDS
@@ -133,9 +133,16 @@ initialize_data <- function(save_model = TRUE) {
 
   # Save the model separately if requested
   if (save_model) {
-    model_path <- h2o.saveModel(ml$model, path = "api/data", force = TRUE)
-    file.rename(model_path, file.path("api/data", "churn_model.h2o"))
-    message("H2O model saved to 'api/data/churn_model.h2o'")
+    # First, remove any existing model directory to avoid conflicts
+    model_dir <- "api/data/churn_model"
+    if (dir.exists(model_dir)) {
+      message("Removing existing model directory: ", model_dir)
+      unlink(model_dir, recursive = TRUE)
+    }
+
+    # Save the model - this creates a directory with the proper structure
+    model_path <- h2o.saveModel(ml$model, path = model_dir, force = TRUE)
+    message("H2O model saved to: ", model_path)
   }
 
   # Return the output
@@ -181,4 +188,4 @@ predict_with_model <- function(model, new_data) {
 message("Starting data processing...")
 result <- initialize_data(save_model = TRUE)
 message("Processing complete and data saved to 'api/data/model_output.rds'")
-message("H2O model saved to 'api/data/churn_model.h2o'")
+message("H2O model saved to 'api/data/churn_model'")

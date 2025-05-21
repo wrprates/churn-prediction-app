@@ -12,19 +12,63 @@ check_model_data <- function() {
     file.path(current_dir, "api", "data", "model_output.rds")
   )
 
-  possible_model_paths <- c(
+  # Check for data file
+  data_exists <- any(sapply(possible_data_paths, file.exists))
+
+  # Check for model (either as .h2o file or directory)
+  h2o_file_found <- FALSE
+  h2o_dir_found <- FALSE
+  h2o_file_path <- NULL
+
+  # Check for .h2o file
+  possible_h2o_file_paths <- c(
     file.path(current_dir, "data", "churn_model.h2o"),
     file.path(current_dir, "..", "api", "data", "churn_model.h2o"),
     file.path(current_dir, "api", "data", "churn_model.h2o")
   )
 
-  # Check if files exist
-  data_exists <- any(sapply(possible_data_paths, file.exists))
-  model_exists <- any(sapply(possible_model_paths, file.exists))
+  for (path in possible_h2o_file_paths) {
+    if (file.exists(path)) {
+      h2o_file_found <- TRUE
+      h2o_file_path <- path
+      break
+    }
+  }
+
+  # Check for model directory
+  possible_model_dirs <- c(
+    file.path(current_dir, "data", "churn_model"),
+    file.path(current_dir, "..", "api", "data", "churn_model"),
+    file.path(current_dir, "api", "data", "churn_model")
+  )
+
+  for (path in possible_model_dirs) {
+    if (dir.exists(path)) {
+      h2o_dir_found <- TRUE
+      break
+    }
+  }
+
+  # If we have the .h2o file but not the model directory, try to create model directory
+  if (h2o_file_found && !h2o_dir_found && !is.null(h2o_file_path)) {
+    message("Found .h2o file but no model directory. Creating model directory...")
+
+    # Determine model directory path
+    model_dir <- file.path(dirname(h2o_file_path), "churn_model")
+
+    # Create the directory
+    dir.create(model_dir, showWarnings = FALSE, recursive = TRUE)
+
+    # Copy the .h2o file to the directory
+    file.copy(h2o_file_path, file.path(model_dir, "churn_model"), overwrite = TRUE)
+
+    message("Created model directory at: ", model_dir)
+    return(TRUE)
+  }
 
   # If either file is missing, run data processing
-  if (!data_exists || !model_exists) {
-    message("Model data or model file not found. Running data processing script...")
+  if (!data_exists || (!h2o_file_found && !h2o_dir_found)) {
+    message("Model data or model not found. Running data processing script...")
 
     # Determine project root directory to source data_processing.R
     if (file.exists(file.path(current_dir, "scripts", "data_processing.R"))) {
@@ -42,7 +86,7 @@ check_model_data <- function() {
     return(TRUE)
   }
 
-  message("Model data and model file found.")
+  message("Model data and model found.")
   return(TRUE)
 }
 

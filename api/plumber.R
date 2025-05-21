@@ -38,7 +38,8 @@ function(pr) {
       message("Checking path: ", path)
       if (file.exists(path)) {
         message("Found file at: ", path)
-        return(path)
+        # Return absolute path to avoid any confusion
+        return(normalizePath(path))
       }
     }
 
@@ -48,9 +49,8 @@ function(pr) {
     )
   }
 
-  # Get the correct path to the model data and model file
+  # Get the correct path to the model data file
   data_file <- find_file("model_output.rds")
-  model_file <- find_file("churn_model.h2o")
 
   # Load model data when server starts
   message("Loading model data from: ", data_file)
@@ -72,25 +72,72 @@ function(pr) {
     }
   )
 
-  # Load the saved H2O model
-  message("Loading H2O model from: ", model_file)
-  tryCatch(
-    {
-      # Get the directory part of the model_file path
-      model_dir <- dirname(model_file)
-      model_name <- basename(model_file)
-      # Remove .h2o extension if present
-      model_name <- sub("\\.h2o$", "", model_name)
+  # Try multiple methods to load the H2O model
+  model_loaded <- FALSE
 
-      # Load the model
-      churn_model <<- h2o.loadModel(path = paste0(model_dir, "/", model_name))
-      message("H2O model loaded successfully")
-    },
-    error = function(e) {
-      message("Error loading H2O model: ", e$message)
-      message("API will continue with pre-computed predictions only")
+  # Method 1: Check if there's a GBM model file in the churn_model directory
+  script_dir <- getwd()
+  h2o_model_dir <- file.path(script_dir, "data", "churn_model")
+
+  # Check for H2O model directory
+  if (dir.exists(h2o_model_dir)) {
+    message("Found H2O model directory at: ", h2o_model_dir)
+
+    # List all files in the directory
+    model_files <- list.files(h2o_model_dir, pattern = "^GBM_model_.*", full.names = TRUE)
+    message("Found ", length(model_files), " GBM model files in directory")
+
+    if (length(model_files) > 0) {
+      # Try to load the first GBM model file
+      tryCatch(
+        {
+          message("Trying to load model from: ", model_files[1])
+          churn_model <<- h2o.loadModel(path = model_files[1])
+          message("H2O model loaded successfully from GBM file")
+          model_loaded <- TRUE
+        },
+        error = function(e) {
+          message("Error loading H2O model from GBM file: ", e$message)
+        }
+      )
     }
-  )
+  }
+
+  # Method 2: Try to load using the .h2o file directly
+  if (!model_loaded) {
+    tryCatch(
+      {
+        h2o_file <- find_file("churn_model.h2o")
+        message("Trying to load model directly from .h2o file: ", h2o_file)
+        churn_model <<- h2o.importModel(h2o_file)
+        message("H2O model loaded successfully from .h2o file")
+        model_loaded <- TRUE
+      },
+      error = function(e) {
+        message("Error loading H2O model from .h2o file: ", e$message)
+      }
+    )
+  }
+
+  # Method 3: Try the whole directory as a last resort
+  if (!model_loaded && dir.exists(h2o_model_dir)) {
+    tryCatch(
+      {
+        message("Trying to load model from directory: ", h2o_model_dir)
+        churn_model <<- h2o.loadModel(h2o_model_dir)
+        message("H2O model loaded successfully from directory")
+        model_loaded <- TRUE
+      },
+      error = function(e) {
+        message("Error loading H2O model from directory: ", e$message)
+        message("API will continue with pre-computed predictions only")
+      }
+    )
+  }
+
+  if (!model_loaded) {
+    message("All model loading attempts failed. API will run with pre-computed predictions only.")
+  }
 
   # Set up CORS
   pr$registerHook("preroute", function(req) {
