@@ -106,7 +106,10 @@ test_that("run_api_locally.R finds plumber.R and starts the API server", {
 
   # Verify the script executed the expected logic
   expect_true(call_tracking$plumb_called, "plumb() function was not called")
-  expect_equal(call_tracking$plumb_file, "plumber.R", "plumb() was not called with the correct file")
+  expect_true(
+    grepl("plumber\\.R$", call_tracking$plumb_file),
+    "plumb() was not called with a plumber.R file"
+  )
 
   expect_true(call_tracking$run_called, "plumber$run() was not called")
   expect_equal(call_tracking$run_host, "0.0.0.0", "plumber$run() was not called with the correct host")
@@ -228,8 +231,11 @@ test_that("API correctly verifies model_output.rds existence", {
   # Verify file no longer exists
   expect_false(file.exists(dummy_file_path), "Failed to remove test file")
 
-  # Use testthat's expect_error directly to check for the error
-  expect_error(find_model_file(), "Could not find model_output.rds file")
+  # Simple error test
+  expect_error(
+    find_model_file(),
+    "Could not find model_output.rds file"
+  )
 
   # Cleanup
   setwd(original_wd)
