@@ -10,10 +10,10 @@ box::use(
     hc_tooltip,
     hc_xAxis,
     hc_yAxis,
-    highchartOutput,
-    renderHighchart,
     highchart,
-    JS
+    highchartOutput,
+    JS,
+    renderHighchart
   ],
   shiny[div, h1, moduleServer, NS],
 )

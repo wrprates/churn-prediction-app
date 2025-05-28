@@ -9,11 +9,11 @@ analogsea::install_r_package(droplet_id, c("dplyr", "plumber"))
 
 # Deploy your API to the droplet
 plumberDeploy::do_deploy_api(
-  droplet = droplet_id,                # Your droplet ID
-  path = "api",                     # Remote path to deploy to
-  localPath = "./api",                # Local path to your API files
-  port = 8000,                         # Port to deploy on
-  forward = TRUE,                     # Forward the port
-  docs = TRUE,                          # Enable Swagger documentation
-  overwrite = TRUE,                  # Overwrite existing deployment
+  droplet = droplet_id, # Your droplet ID
+  path = "api", # Remote path to deploy to
+  localPath = "./api", # Local path to your API files
+  port = 8000, # Port to deploy on
+  forward = TRUE, # Forward the port
+  docs = TRUE, # Enable Swagger documentation
+  overwrite = TRUE, # Overwrite existing deployment
 )

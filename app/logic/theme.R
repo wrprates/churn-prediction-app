@@ -1,5 +1,5 @@
 box::use(
-  bslib[bs_theme, navbar_options, font_google],
+  bslib[bs_theme, font_google, navbar_options],
 )
 
 #' @export

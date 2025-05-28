@@ -5,9 +5,9 @@ box::use(
   highcharter[
     hc_plotOptions,
     hc_title,
+    hc_tooltip,
     hc_xAxis,
     hc_yAxis,
-    hc_tooltip,
     hcaes,
     hchart,
     highchartOutput,

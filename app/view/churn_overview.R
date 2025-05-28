@@ -14,17 +14,17 @@ box::use(
     hc_yAxis,
     hcaes,
     hchart,
-    highchartOutput,
-    renderHighchart,
     highchart,
-    JS
+    highchartOutput,
+    JS,
+    renderHighchart
   ],
   shiny[div, moduleServer, NS, p, renderText, tags, textOutput],
-  utils[head]
+  utils[head],
 )
 
 box::use(
-  app / logic / data_store
+  app/logic/data_store,
 )
 
 #' @export
@@ -62,7 +62,7 @@ ui <- function(id) {
       div(
         class = "p-3",
         p(
-          "This chart shows the overall distribution of churned vs non-churned customers. 
+          "This chart shows the overall distribution of churned vs non-churned customers.
           It provides a quick overview of the company's customer retention situation."
         ),
         highchartOutput(ns("overall_churn"))
@@ -76,8 +76,8 @@ ui <- function(id) {
         div(
           class = "p-3",
           p(
-            "This chart displays the most important variables that influence customer churn, 
-            ranked by their impact on the model's predictions. Understanding these factors 
+            "This chart displays the most important variables that influence customer churn,
+            ranked by their impact on the model's predictions. Understanding these factors
             helps in developing targeted retention strategies."
           ),
           highchartOutput(ns("risk_factors"))
@@ -88,7 +88,7 @@ ui <- function(id) {
         div(
           class = "p-3",
           p(
-            "This visualization shows the relationship between contract types and churn rates. 
+            "This visualization shows the relationship between contract types and churn rates.
             It helps identify which contract arrangements are associated with higher customer
             retention."
           ),
@@ -122,7 +122,9 @@ ui <- function(id) {
 
 # Helper functions for data processing
 get_total_customers <- function(data) {
-  if (!is.data.frame(data$raw_data)) return(0)
+  if (!is.data.frame(data$raw_data)) {
+    return(0)
+  }
   nrow(data$raw_data)
 }
 

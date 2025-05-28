@@ -1,6 +1,6 @@
 box::use(
   bslib[card, card_header, layout_column_wrap, page_fluid],
-  dplyr[filter, distinct, pull],
+  dplyr[distinct, filter, pull],
   highcharter[
     hc_add_series,
     hc_xAxis,
@@ -11,10 +11,10 @@ box::use(
     renderHighchart
   ],
   htmltools[HTML],
-  reactable[reactable, reactableOutput, renderReactable, colDef, colFormat],
+  reactable[colDef, colFormat, reactable, reactableOutput, renderReactable],
   rlang[sym],
-  shiny[moduleServer, NS, div, tags, reactive, observe, req],
-  shinyWidgets[virtualSelectInput, updateVirtualSelect],
+  shiny[div, moduleServer, NS, observe, reactive, req, tags],
+  shinyWidgets[updateVirtualSelect, virtualSelectInput],
 )
 
 box::use(

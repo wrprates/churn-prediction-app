@@ -1,16 +1,16 @@
 box::use(
   bslib[nav_panel, nav_spacer, page_navbar],
-  shiny.router[router_server],
   shiny[busyIndicatorOptions, moduleServer, NS, useBusyIndicators],
+  shiny.router[router_server],
 )
 
 box::use(
+  app / logic / data_store,
+  app / logic / theme,
   app / view / churn_overview,
   app / view / customer_risk,
   app / view / financial_impact,
   app / view / predictive_model,
-  app / logic / theme,
-  app / logic / data_store,
 )
 
 #' @export

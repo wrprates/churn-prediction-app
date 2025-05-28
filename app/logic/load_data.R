@@ -1,8 +1,8 @@
 box::use(
-  httr[GET, status_code, content],
-  jsonlite[fromJSON],
   config[get],
-  utils[capture.output, head, str]
+  httr[content, GET, status_code],
+  jsonlite[fromJSON],
+  utils[capture.output, head, str],
 )
 
 #' @export

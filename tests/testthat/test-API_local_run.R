@@ -1,6 +1,6 @@
 box::use(
-  testthat[expect_output, test_that, expect_true, expect_equal, expect_identical, expect_error, skip],
   mockery[mock, stub],
+  testthat[expect_equal, expect_error, expect_identical, expect_output, expect_true, skip, test_that],
 )
 
 # Test the basic functionality of run_api_locally.R with a mock plumber
