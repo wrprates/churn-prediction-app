@@ -6,6 +6,9 @@ library(dplyr)
 library(h2o)
 library(tibble)
 
+# Source our data processing functions
+source("data_processing_functions.R")
+
 # Initialize data and model variables
 loaded_data <- NULL
 churn_model <- NULL
@@ -176,6 +179,8 @@ function() {
       "/model/predictions" = "Get model predictions",
       "/model/predictions/{id}" = "Get prediction for specific customer",
       "/model/predict" = "Make predictions on new customer data (POST)",
+      "/model/process-and-predict" = "Process and predict new customer data (POST)",
+      "/model/validate-data" = "Validate customer data structure (POST)",
       "/model/risk-groups" = "Get churn by risk groups",
       "/model/overall-churn" = "Get overall churn statistics",
       "/model/financial-impact" = "Get financial impact data by risk group",
@@ -403,6 +408,70 @@ function() {
   loaded_data$raw_data
 }
 
+#* Validate customer data structure
+#* @param customerData A JSON object with customer data
+#* @post /model/validate-data
+function(req) {
+  # Parse the request body
+  customer_data <- req$body
+
+  # Validate the input data
+  if (is.null(customer_data) || length(customer_data) == 0) {
+    return(list(error = "No customer data provided"))
+  }
+
+  # Use our validation function
+  validation_result <- validate_customer_data(customer_data)
+  return(validation_result)
+}
+
+#* Process and predict customer data
+#* @param customerData A JSON object with customer data
+#* @post /model/process-and-predict
+function(req) {
+  # Check if model is loaded
+  if (is.null(churn_model)) {
+    return(list(error = "Model not loaded. Please initialize the API with a valid model."))
+  }
+
+  # Parse the request body
+  customer_data <- req$body
+
+  # Validate the input data
+  if (is.null(customer_data) || length(customer_data) == 0) {
+    return(list(error = "No customer data provided"))
+  }
+
+  # Validate data structure
+  validation_result <- validate_customer_data(customer_data)
+  if (!validation_result$valid) {
+    return(validation_result)
+  }
+
+  # Process the data
+  tryCatch(
+    {
+      # Process the data
+      processed_data <- process_customer_data(customer_data)
+
+      # Make predictions
+      predictions <- make_predictions(churn_model, processed_data)
+
+      # Calculate risk metrics
+      risk_metrics <- calculate_risk_metrics(predictions)
+
+      # Return results
+      return(list(
+        predictions = predictions,
+        risk_metrics = risk_metrics
+      ))
+    },
+    error = function(e) {
+      return(list(error = paste("Error processing data:", e$message)))
+    }
+  )
+}
+
 #* Make predictions on new customer data
 #* @param customerData A JSON object with customer data
 #* @post /model/predict
@@ -420,57 +489,182 @@ function(req) {
     return(list(error = "No customer data provided"))
   }
 
-  # Convert the input data to a data frame
+  # Validate data structure
+  validation_result <- validate_customer_data(customer_data)
+  if (!validation_result$valid) {
+    return(validation_result)
+  }
+
+  # Process and predict
   tryCatch(
     {
-      # If customer_data is a list but not a data frame, convert it
-      if (is.list(customer_data) && !is.data.frame(customer_data)) {
-        # If it's a single customer (list of values), convert to a single-row data frame
-        if (!any(sapply(customer_data, is.list))) {
-          customer_df <- as.data.frame(t(unlist(customer_data)), stringsAsFactors = FALSE)
-        } else {
-          # If it's a list of customers, use do.call to bind them
-          customer_df <- do.call(
-            rbind,
-            lapply(customer_data, function(x) {
-              as.data.frame(x, stringsAsFactors = FALSE)
-            })
-          )
-        }
-      } else if (is.data.frame(customer_data)) {
-        customer_df <- customer_data
-      } else {
-        return(list(error = "Invalid customer data format"))
-      }
-
-      # Convert categorical variables to factors
-      for (col in names(customer_df)) {
-        if (is.character(customer_df[[col]])) {
-          customer_df[[col]] <- as.factor(customer_df[[col]])
-        }
-      }
-
-      # Convert to H2O frame for prediction
-      h2o_frame <- as.h2o(customer_df)
+      # Process the data
+      processed_data <- process_customer_data(customer_data)
 
       # Make predictions
-      predictions <- h2o.predict(churn_model, h2o_frame)
+      predictions <- make_predictions(churn_model, processed_data)
 
-      # Process the predictions
-      result <- customer_df |>
-        tibble::as_tibble() |>
-        bind_cols(
-          as_tibble(predictions) |>
-            select(Predict = predict, PredictProbability = Yes) |>
-            mutate(PredictProbability = round(100 * PredictProbability, 2))
-        ) |>
-        mutate(RiskGroup = as.factor(11 - ntile(PredictProbability, 10))) |>
-        arrange(desc(PredictProbability))
-
-      return(result)
+      return(predictions)
     },
     error = function(e) {
       return(list(error = paste("Error making predictions:", e$message)))
     }
+  )
+}
+
+#* Preprocess customer data without making predictions
+#* @param customerData A JSON object with customer data
+#* @post /model/preprocess
+function(req) {
+  # Parse the request body
+  customer_data <- req$body
+
+  # Validate the input data
+  if (is.null(customer_data) || length(customer_data) == 0) {
+    return(list(error = "No customer data provided"))
+  }
+
+  # Validate data structure
+  validation_result <- validate_customer_data(customer_data)
+  if (!validation_result$valid) {
+    return(validation_result)
+  }
+
+  # Process the data
+  tryCatch(
+    {
+      # Process the data
+      processed_data <- process_customer_data(customer_data)
+      return(list(
+        processed_data = processed_data,
+        message = "Data preprocessed successfully"
+      ))
+    },
+    error = function(e) {
+      return(list(error = paste("Error preprocessing data:", e$message)))
+    }
+  )
+}
+
+#* Calculate risk metrics for predictions
+#* @param predictions A JSON object with prediction results
+#* @post /model/calculate-risk
+function(req) {
+  # Parse the request body
+  predictions <- req$body
+
+  # Validate the input data
+  if (is.null(predictions) || length(predictions) == 0) {
+    return(list(error = "No prediction data provided"))
+  }
+
+  # Calculate risk metrics
+  tryCatch(
+    {
+      risk_metrics <- calculate_risk_metrics(predictions)
+      return(list(
+        risk_metrics = risk_metrics,
+        message = "Risk metrics calculated successfully"
+      ))
+    },
+    error = function(e) {
+      return(list(error = paste("Error calculating risk metrics:", e$message)))
+    }
+  )
+}
+
+#* Process and predict multiple customers in batch
+#* @param customerData A JSON array of customer data objects
+#* @post /model/batch-predict
+function(req) {
+  # Check if model is loaded
+  if (is.null(churn_model)) {
+    return(list(error = "Model not loaded. Please initialize the API with a valid model."))
+  }
+
+  # Parse the request body
+  customer_data <- req$body
+
+  # Validate the input data
+  if (is.null(customer_data) || length(customer_data) == 0) {
+    return(list(error = "No customer data provided"))
+  }
+
+  # Ensure we have a list of customers
+  if (!is.list(customer_data)) {
+    return(list(error = "Input must be an array of customer data objects"))
+  }
+
+  # If it's a single customer, wrap it in a list
+  if (!any(sapply(customer_data, is.list))) {
+    customer_data <- list(customer_data)
+  }
+
+  # Process each customer
+  results <- list()
+  errors <- list()
+
+  for (i in seq_along(customer_data)) {
+    tryCatch(
+      {
+        # Validate individual customer data
+        validation_result <- validate_customer_data(customer_data[[i]])
+        if (!validation_result$valid) {
+          errors[[i]] <- list(
+            index = i,
+            error = validation_result$errors
+          )
+          next
+        }
+
+        # Process the data
+        processed_data <- process_customer_data(customer_data[[i]])
+
+        # Make predictions
+        predictions <- make_predictions(churn_model, processed_data)
+
+        # Calculate risk metrics
+        risk_metrics <- calculate_risk_metrics(predictions)
+
+        # Add to results
+        results[[i]] <- list(
+          index = i,
+          predictions = predictions,
+          risk_metrics = risk_metrics
+        )
+      },
+      error = function(e) {
+        errors[[i]] <- list(
+          index = i,
+          error = e$message
+        )
+      }
+    )
+  }
+
+  # Return combined results
+  return(list(
+    results = results,
+    errors = errors,
+    total_processed = length(results),
+    total_errors = length(errors)
+  ))
+}
+
+#* Get processing pipeline status
+#* @get /model/pipeline-status
+function() {
+  list(
+    model_loaded = !is.null(churn_model),
+    data_loaded = !is.null(loaded_data),
+    h2o_initialized = h2o.clusterIsUp(),
+    available_endpoints = list(
+      "/model/validate-data" = "Validate customer data structure",
+      "/model/preprocess" = "Preprocess customer data",
+      "/model/predict" = "Make predictions on new customer data",
+      "/model/process-and-predict" = "Process and predict new customer data",
+      "/model/calculate-risk" = "Calculate risk metrics for predictions",
+      "/model/batch-predict" = "Process and predict multiple customers in batch"
+    )
   )
 }
