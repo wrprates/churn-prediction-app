@@ -8,6 +8,7 @@ library(httr)
 library(jsonlite)
 library(dplyr)
 library(readr)
+library(h2o)
 
 # Define the API URL - modify if needed
 API_URL <- "http://localhost:8000"
@@ -71,6 +72,10 @@ test_single_prediction <- function() {
     TotalCharges = 2171.80
   )
 
+  # Ensure the customer data has the expected columns
+  expected_cols <- c("gender", "SeniorCitizen", "Partner", "Dependents", "tenure", "PhoneService", "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies", "Contract", "PaperlessBilling", "PaymentMethod", "MonthlyCharges", "TotalCharges")
+  customer <- customer[expected_cols]
+
   # Convert to JSON
   json_data <- toJSON(customer, auto_unbox = TRUE)
 
@@ -78,7 +83,7 @@ test_single_prediction <- function() {
   response <- tryCatch(
     {
       POST(
-        paste0(API_URL, "/model/predict"),
+        paste0(API_URL, "/predict"),
         body = json_data,
         content_type("application/json"),
         encode = "raw"
@@ -151,6 +156,15 @@ test_multiple_predictions <- function() {
     }
   )
 
+  # Select only the expected columns
+  expected_cols <- c(
+    "gender", "SeniorCitizen", "Partner", "Dependents", "tenure", "PhoneService", "MultipleLines",
+    "InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport",
+    "StreamingTV", "StreamingMovies", "Contract", "PaperlessBilling", "PaymentMethod",
+    "MonthlyCharges", "TotalCharges"
+  )
+  sample_data <- sample_data[, expected_cols]
+
   # Convert to list for JSON conversion
   customers_list <- lapply(seq_len(nrow(sample_data)), function(i) {
     as.list(sample_data[i, ])
@@ -163,7 +177,7 @@ test_multiple_predictions <- function() {
   response <- tryCatch(
     {
       POST(
-        paste0(API_URL, "/model/predict"),
+        paste0(API_URL, "/predict_batch"),
         body = json_data,
         content_type("application/json"),
         encode = "raw"

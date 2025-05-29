@@ -134,14 +134,14 @@ initialize_data <- function(save_model = TRUE) {
   # Save the model separately if requested
   if (save_model) {
     # First, remove any existing model directory to avoid conflicts
-    model_dir <- "api/data/churn_model"
+    model_dir <- "data/churn_model"
     if (dir.exists(model_dir)) {
       message("Removing existing model directory: ", model_dir)
       unlink(model_dir, recursive = TRUE)
     }
 
     # Save the model - this creates a directory with the proper structure
-    model_path <- h2o.saveModel(ml$model, path = model_dir, force = TRUE)
+    model_path <- h2o.saveModel(ml$model, path = model_dir, force = TRUE, filename = "churn_model.h2o")
     message("H2O model saved to: ", model_path)
   }
 
