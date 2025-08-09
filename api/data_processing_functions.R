@@ -22,7 +22,7 @@ list_to_df <- function(data) {
       ))
     }
   }
-  return(data)
+  data
 }
 
 #' Validate customer data structure and content
@@ -104,7 +104,7 @@ validate_customer_data <- function(customer_data) {
     ))
   }
 
-  return(list(valid = TRUE, message = "Data validation successful"))
+  list(valid = TRUE, message = "Data validation successful")
 }
 
 #' Process customer data for prediction
@@ -140,7 +140,7 @@ process_customer_data <- function(customer_data) {
       customer_data$MonthlyCharges[is.na(customer_data$TotalCharges)]
   }
 
-  return(customer_data)
+  customer_data
 }
 
 #' Make predictions on processed customer data
@@ -170,7 +170,7 @@ make_predictions <- function(model, processed_data) {
     mutate(RiskGroup = as.factor(11 - ntile(PredictProbability, 10))) |>
     arrange(desc(PredictProbability))
 
-  return(result)
+  result
 }
 
 #' Calculate risk metrics for predictions
@@ -224,8 +224,8 @@ calculate_risk_metrics <- function(predictions) {
       .groups = "drop"
     )
 
-  return(list(
+  list(
     churn_by_risk = churn_by_risk,
     financial_impact = financial_impact
-  ))
+  )
 }
