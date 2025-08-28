@@ -1,15 +1,127 @@
 box::use(
   config[get],
-  httr[content, GET, status_code],
-  jsonlite[fromJSON],
-  utils[capture.output, head, str],
+  httr[content, GET, POST, add_headers, status_code],
+  jsonlite[fromJSON, toJSON],
+  utils[capture.output, head, str, read.csv],
 )
 
 #' @export
-load_data <- function(use_api = NULL) {
+process_csv_file <- function(csv_file_path, use_api = NULL) {
   # Load configuration
+  config_env <- Sys.getenv("R_CONFIG_ACTIVE", "default")
+  message("Running in environment: ", config_env)
   config <- get()
 
+  # Determine whether to use API (priority to function argument)
+  use_api_config <- if (!is.null(use_api)) {
+    use_api
+  } else {
+    config$use_api
+  }
+
+  if (use_api_config) {
+    tryCatch(
+      {
+        # Read CSV file
+        message("Reading CSV file: ", csv_file_path)
+        csv_data <- read.csv(csv_file_path, stringsAsFactors = FALSE)
+
+        if (nrow(csv_data) == 0) {
+          return(list(error = "CSV file is empty"))
+        }
+
+        message("CSV loaded with ", nrow(csv_data), " rows and ", ncol(csv_data), " columns")
+
+        # Convert data frame to list of records for JSON
+        csv_records <- lapply(1:nrow(csv_data), function(i) {
+          as.list(csv_data[i, ])
+        })
+
+        # Send to API
+        api_base_url <- config$api_url
+        url <- paste0(api_base_url, "/process_csv")
+
+        message("Sending CSV data to API: ", url)
+
+        response <- POST(
+          url,
+          body = csv_records,
+          add_headers("Content-Type" = "application/json"),
+          encode = "json"
+        )
+
+        if (status_code(response) != 200) {
+          message("API request failed with status: ", status_code(response))
+          return(NULL)
+        }
+
+        # Parse response
+        result <- fromJSON(content(response, "text", encoding = "UTF-8"))
+
+        if (!is.null(result$error)) {
+          message("API returned error: ", result$error)
+          return(NULL)
+        }
+
+        message("Successfully processed CSV data via API")
+        message("- Processed ", nrow(result$raw_data), " customer records")
+        message("- Generated ", nrow(result$predictions), " predictions")
+
+        return(result)
+      },
+      error = function(e) {
+        message("Error processing CSV via API: ", e$message)
+        return(NULL)
+      }
+    )
+  }
+
+  # Fallback: Return NULL to use local processing
+  message("API processing disabled or failed, falling back to local processing")
+  return(NULL)
+}
+
+#' @export
+load_data <- function(use_api = NULL, csv_file_path = NULL) {
+  # Load configuration
+  config <- get()
+  
+  # If no CSV file is provided, look for one in common locations
+  if (is.null(csv_file_path)) {
+    # Check for CSV files in common locations
+    possible_csv_paths <- c(
+      "data/customer_data.csv",
+      "api/data/customer_data.csv", 
+      "customer_data.csv",
+      "data/churn_data.csv",
+      "api/data/churn_data.csv",
+      "churn_data.csv"
+    )
+    
+    # Try to find a CSV file
+    for (path in possible_csv_paths) {
+      if (file.exists(path)) {
+        message("Found CSV file at: ", path)
+        csv_file_path <- path
+        break
+      }
+    }
+  }
+  
+  # If CSV file is found, process it via API
+  if (!is.null(csv_file_path) && file.exists(csv_file_path)) {
+    message("Attempting to process CSV file through API: ", csv_file_path)
+    result <- process_csv_file(csv_file_path, use_api)
+    if (!is.null(result) && !is.null(result$raw_data)) {
+      message("Successfully processed CSV via API, returning result")
+      return(result)
+    }
+    message("CSV processing via API failed, falling back to original logic")
+  } else {
+    message("No CSV file found, using original data loading logic")
+  }
+
+  # Original data loading logic (fallback)
   # Determine whether to use API (priority to function argument)
   use_api_config <- if (!is.null(use_api)) {
     use_api

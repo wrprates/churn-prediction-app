@@ -87,7 +87,7 @@ check_model_data <- function() {
   }
 
   message("Model data and model found.")
-  return(TRUE)
+  TRUE
 }
 
 # Simple approach to find plumber.R
@@ -111,7 +111,7 @@ if (!file.exists(plumber_path)) {
   stop(
     "Cannot find plumber.R file. Please run this script from either:\n",
     "  1. The main project directory (with 'Rscript api/run_api_locally.R')\n",
-    "  2. The api/ directory (with 'Rscript run_api_locally.R')"
+    "  2. The api/directory (with 'Rscript run_api_locally.R')"
   )
 }
 

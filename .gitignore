@@ -10,3 +10,7 @@ package.json
 .Rproj
 rsconnect/
 .httr-oauth
+.vscode/
+.cursor/
+.claude/
+.Renviron

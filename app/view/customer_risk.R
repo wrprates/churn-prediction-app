@@ -141,8 +141,8 @@ server <- function(id) {
 
       churn_choices <- data$predictions |>
         filter(RiskGroup %in% c("1", "2", "3")) |>
-        distinct(Churn) |>
-        pull(Churn)
+        distinct(Predict) |>
+        pull(Predict)
 
       contract_choices <- data$predictions |>
         filter(RiskGroup %in% c("1", "2", "3")) |>

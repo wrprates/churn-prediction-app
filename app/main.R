@@ -2,6 +2,7 @@ box::use(
   bslib[nav_panel, nav_spacer, page_navbar],
   shiny[busyIndicatorOptions, moduleServer, NS, useBusyIndicators],
   shiny.router[router_server],
+  config[get],
 )
 
 box::use(
@@ -49,6 +50,9 @@ server <- function(id) {
   moduleServer(id, function(input, output, session) {
     router_server()
 
+    # Load config
+    app_config <- get()
+    
     # Initialize data store once in the main app
     message("Initializing data store in main app...")
     # Use the exported data_store instance's get_data method

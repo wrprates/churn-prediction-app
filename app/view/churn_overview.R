@@ -8,6 +8,7 @@ box::use(
     hc_colors,
     hc_legend,
     hc_size,
+    hc_subtitle,
     hc_title,
     hc_tooltip,
     hc_xAxis,
@@ -169,7 +170,7 @@ create_overall_churn_chart <- function(data) {
 
   data$overall_churn |>
     hchart(
-      hcaes(x = Customer, y = `% Customers`, group = Churn),
+      hcaes(x = Customer, y = Percentage, group = Churn),
       type = "bar",
       stacking = "normal",
       dataLabels = list(enabled = TRUE)
