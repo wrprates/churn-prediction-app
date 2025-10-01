@@ -26,6 +26,7 @@ jobs:
             gdal-bin
             libgdal-dev
             libudunits2-dev
+            libsodium-dev
           )
           sudo apt-get update
           sudo apt-get install --yes "${packages[@]}"
@@ -68,3 +69,7 @@ jobs:
         shell: Rscript {0}
         run: rhino::build_sass()
 
+      - name: Run tests
+        if: always()
+        shell: Rscript {0}
+        run: rhino::test_r()

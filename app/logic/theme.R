@@ -1,5 +1,5 @@
 box::use(
-  bslib[bs_theme],
+  bslib[bs_theme, font_google, navbar_options],
 )
 
 #' @export
@@ -19,6 +19,12 @@ app_theme <- bs_theme(
   "navbar-bg" = "#ffffff",
   "navbar-padding-y" = "1rem",
   # Add Google Fonts
-  base_font = bslib::font_google("Inter"),
-  heading_font = bslib::font_google("Poppins")
+  base_font = font_google("Inter"),
+  heading_font = font_google("Poppins")
+)
+
+#' @export
+app_navbar_options <- navbar_options(
+  bg = "#ffffff",
+  padding_y = "1rem"
 )

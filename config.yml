@@ -1,3 +1,21 @@
 default:
   rhino_log_level: !expr Sys.getenv("RHINO_LOG_LEVEL", "INFO")
   rhino_log_file: !expr Sys.getenv("RHINO_LOG_FILE", NA)
+  use_api: !expr as.logical(Sys.getenv("USE_API", "true"))
+  api_url: !expr Sys.getenv("API_URL", "http://164.90.245.110")
+  local_fallback: !expr as.logical(Sys.getenv("LOCAL_FALLBACK", "true"))
+
+development:
+  use_api: !expr as.logical(Sys.getenv("DEV_USE_API", "true"))
+  api_url: !expr Sys.getenv("DEV_API_URL", "http://localhost:8000")
+  local_fallback: !expr as.logical(Sys.getenv("DEV_LOCAL_FALLBACK", "true"))
+
+production:
+  use_api: !expr as.logical(Sys.getenv("PROD_USE_API", "true"))
+  api_url: !expr Sys.getenv("PROD_API_URL", "http://164.90.245.110")
+  local_fallback: !expr as.logical(Sys.getenv("PROD_LOCAL_FALLBACK", "false"))
+
+testing:
+  use_api: !expr as.logical(Sys.getenv("TEST_USE_API", "false"))
+  api_url: !expr Sys.getenv("TEST_API_URL", "http://localhost:8000")
+  local_fallback: !expr as.logical(Sys.getenv("TEST_LOCAL_FALLBACK", "true"))
