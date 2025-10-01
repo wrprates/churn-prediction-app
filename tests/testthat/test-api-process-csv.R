@@ -1,5 +1,4 @@
 library(testthat)
-library(mockery)
 library(jsonlite)
 
 # Tests for API response structure validation (mocked)
